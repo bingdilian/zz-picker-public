@@ -2,6 +2,17 @@
 
 面向社区免费试用的非官方插件。按型号、待售手机 iOS 区间、购买渠道、容量和成色筛选商品，在转转前台逐件读取验机报告，命中后暂停供你查看。无需另行注册、付费或连接插件服务器。
 
+**直接下载：[1.2.0-beta1 安装文件与校验清单](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta1)**
+
+| 使用环境 | 下载文件 |
+|---|---|
+| TrollFools 注入 | [dylib](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-trollfools.dylib) / [zip](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-trollfools.zip)，任选一种 |
+| 普通 Dopamine / rootless | [rootless.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-rootless.deb) |
+| Dopamine RootHide | [roothide.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-roothide.deb) |
+| 全部安装格式、文档与源码 | [完整合集](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-release.zip) |
+
+安装包位于 Release 的 **Assets**；GitHub 自动生成的 `Source code (zip)` 仅为源码，不能直接注入。请先移除旧注入，再安装对应的一种文件，并完全重开转转。本版为测试版，下方兼容范围与待验证项仍适用。
+
 适配基线为转转 **12.8.5**；动态库为 **arm64**，最低部署版本 **iOS 15.0**。这只是编译条件，实际安装还受注入工具、系统和 App 状态限制。当前仅有 iPhone 13 Pro Max / iOS 15.4.1 / TrollFools 的旧测试版部分流程证据，不能据此认定本版或所有环境兼容。
 
 - [安装、更新、卸载与使用](docs/public/install.md)
