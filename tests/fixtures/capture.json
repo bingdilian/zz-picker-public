@@ -1,0 +1,185 @@
+{
+  "id": "2107126446155633664",
+  "item": {
+    "infoId": "2107126446155633664",
+    "strInfoId": "2107126446155633664",
+    "title": "iPhone 15 Pro Max 512G 白色钛金属 国行 全网通",
+    "pgModelId": "129389",
+    "price": "4538",
+    "status": "1",
+    "jumpUrl": "https://m.zhuanzhuan.com/u/streamline_detail/new-goods-detail?infoId=2107126446155633664"
+  },
+  "base": {
+    "respCode": 0,
+    "respData": {
+      "title": "iPhone 15 Pro Max 512G 白色钛金属 国行 全网通",
+      "modelId": 129389,
+      "infoLv": {
+        "valueId": 1080624,
+        "level": "95新",
+        "summary": null
+      },
+      "collected": false,
+      "isSoldOut": false
+    }
+  },
+  "more": {
+    "respCode": 0,
+    "respData": {
+      "report": {
+        "title": "iPhone 15 Pro Max",
+        "params": [
+          {
+            "key": "系统版本",
+            "value": "iOS 26.6.2"
+          },
+          {
+            "key": "存储容量",
+            "value": "512G"
+          },
+          {
+            "key": "购买渠道",
+            "value": "国行"
+          }
+        ],
+        "reportParam": {
+          "paramDetail": [
+            {
+              "paramInfo": [
+                {
+                  "paramName": "系统版本",
+                  "paramValue": "iOS 26.6.2"
+                }
+              ]
+            }
+          ],
+          "paramBars": [
+            {
+              "paramName": "购买渠道",
+              "paramValue": "国行"
+            }
+          ]
+        },
+        "dtGrade": {
+          "function": {
+            "name": "B"
+          }
+        }
+      }
+    }
+  },
+  "favorite": {
+    "respData": {
+      "isShowPopup": "0",
+      "respText": "",
+      "collectCount": "35"
+    },
+    "respCode": "0"
+  },
+  "filterResponse": [
+    {
+      "text": "成色",
+      "style": "108",
+      "child": [
+        {
+          "text": "外观",
+          "style": "116",
+          "key": "285",
+          "child": [
+            {
+              "text": "99新",
+              "style": "112",
+              "key": "285",
+              "value": "28076",
+              "cmd": "params_new6664=1145139"
+            },
+            {
+              "text": "95新",
+              "style": "112",
+              "key": "285",
+              "value": "28077",
+              "cmd": "params_new6664=1145140"
+            },
+            {
+              "text": "9成新",
+              "style": "112",
+              "key": "285",
+              "value": "28078",
+              "cmd": "params_new6664=1082892"
+            },
+            {
+              "text": "8成新",
+              "style": "112",
+              "key": "285",
+              "value": "28079",
+              "cmd": "params_new6664=1082901"
+            }
+          ]
+        },
+        {
+          "text": "功能",
+          "style": "116",
+          "key": "232",
+          "child": [
+            {
+              "text": "S",
+              "style": "117",
+              "key": "232",
+              "value": "28349",
+              "cmd": "params_new13144=66"
+            },
+            {
+              "text": "A",
+              "style": "117",
+              "key": "232",
+              "value": "28350",
+              "cmd": "params_new13144=1214785"
+            },
+            {
+              "text": "B",
+              "style": "117",
+              "key": "232",
+              "value": "28351",
+              "cmd": "params_new13144=1214786"
+            },
+            {
+              "text": "C",
+              "style": "117",
+              "key": "232",
+              "value": "28352",
+              "cmd": "params_new13144=1171778"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "容量",
+      "style": "102",
+      "key": "69",
+      "child": [
+        {
+          "text": "256G",
+          "style": "110",
+          "key": "69",
+          "value": "5048",
+          "cmd": "params_new6651=678742"
+        },
+        {
+          "text": "512G",
+          "style": "110",
+          "key": "69",
+          "value": "5170",
+          "cmd": "params_new6651=1080730"
+        },
+        {
+          "text": "1T",
+          "style": "110",
+          "key": "69",
+          "value": "4975",
+          "cmd": "params_new6651=1081373"
+        }
+      ]
+    }
+  ]
+}
