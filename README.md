@@ -1,32 +1,49 @@
-# 转转选机助手 · 1.2.0-beta6（紧凑选项测试包）
+# 转转选机助手 · 第二版（开发中）
 
-面向社区免费试用的非官方插件。按型号、待售手机 iOS 区间、购买渠道、容量和成色筛选商品，在转转前台逐件读取验机报告，命中后暂停供你查看。无需另行注册、付费或连接插件服务器。
+第二版开发分支：`v2-compatibility`。基于第一版 `1.2.0-beta6`，计划增加机型选择、TrollStore 与越狱兼容性筛选，以及 iOS 范围联动。
 
-当前 beta6 为本地紧凑选项测试包，尚未发布到 GitHub Releases。购买渠道、容量和成色的选项按原“国行”首行样式统一为 28 点高，多行等高、间距一致。保留 beta4 的输入体验、beta3 的顶部布局修复及 beta2 的翻页适配与诊断；实际转转页面仍需真机验证。下面的在线下载链接暂时仍指向 beta1。
+**本分支尚未提供第二版安装包。新增功能仍处于设计与开发准备阶段；当前代码保留第一版 beta6 的功能，不能将本分支当作已完成的第二版。** 开发和验证完成后，再创建第二版 Release 并上传对应安装文件。
 
-**已发布的旧版下载：[1.2.0-beta1 安装文件与校验清单](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta1)**
+## 分支说明
 
-| 使用环境 | 下载文件 |
+| 分支 | 用途 |
 |---|---|
-| TrollFools 注入 | [dylib](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-trollfools.dylib) / [zip](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-trollfools.zip)，任选一种 |
-| 普通 Dopamine / rootless | [rootless.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-rootless.deb) |
-| Dopamine RootHide | [roothide.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-roothide.deb) |
-| 全部安装格式、文档与源码 | [完整合集](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta1/ZZPicker-1.2.0-beta1-release.zip) |
+| [v1-compatibility](https://github.com/bingdilian/zz-picker/tree/v1-compatibility) | 第一版，保留现有说明、发布记录及下载入口 |
+| [v2-compatibility](https://github.com/bingdilian/zz-picker/tree/v2-compatibility) | 第二版，进行兼容性筛选与机型联动开发 |
 
-安装包位于 Release 的 **Assets**；GitHub 自动生成的 `Source code (zip)` 仅为源码，不能直接注入。请先移除旧注入，再安装对应的一种文件，并完全重开转转。本版为测试版，下方兼容范围与待验证项仍适用。
+## 第二版计划
 
-适配基线为转转 **12.8.5**；动态库为 **arm64**，最低部署版本 **iOS 15.0**。这只是编译条件，实际安装还受注入工具、系统和 App 状态限制。当前仅有 iPhone 13 Pro Max / iOS 15.4.1 / TrollFools 的旧测试版部分流程证据，不能据此认定本版或所有环境兼容。
+- 将手机型号输入改为可搜索、按系列分组的选择器，关联芯片、最低出厂系统和有效容量。
+- 增加“可安装巨魔”和“可完整越狱”两个条件；同时勾选时必须全部满足，两个新开关默认关闭。
+- 首期收录经官方来源核对的 TrollStore、安装路径与 Dopamine 正式版规则；后续再独立加入其他工具及 RootHide 分支。
+- 自动计算机型与用途要求的交集，保留多段区间、精确版本及构建号限制，避免将不支持的中间版本当作命中。
+- 提供自动匹配和手动收窄；手动边界留空只表示不额外限制该方向，不取消用途规则本身的限制。
+- 无交集时在开始前提示；报告必要信息缺失或冲突时列为待确认，不自动收藏。
+- 在命中结果中说明适用工具、工具版本、安装前提、规则来源和判断依据。
 
-- [安装、更新、卸载与使用](docs/public/install.md)
-- [兼容范围与已知限制](docs/public/compatibility.md)
+上述为开发目标，并非已完成的功能清单。兼容性依据待售手机当前系统判断，不推测升级或降级后的能力；已收录支持也不等于能远程保证实物状态与实际操作成功。
+
+## 保留的第一版基础
+
+按型号搜索，核验容量与成色筛选请求，逐件读取验机报告，再结合 iOS 区间、购买渠道、容量和成色判断。保留前台扫描、命中暂停、查看详情后手动继续、可选自动收藏、任务数量与时长上限，以及诊断导出。
+
+保留 beta6 的紧凑等高选项、输入结束与收键盘处理、顶部导航布局修复。旧用户设置及自动收藏偏好需要在第二版迁移中保留。
+
+第一版真实转转连续翻页、自动收藏成功回读及各安装环境仍有待验证项。适配基线为转转 `12.8.5`，现有动态库为 arm64，最低部署版本 iOS 15.0；这些编译条件不代表所有设备和系统均已验证。
+
+## 开发与验证
+
+在安装 Xcode、Python 3 与 Node.js 的 Mac 上执行：
+
+```sh
+make check
+make ui-tests
+```
+
+`make check` 构建现有代码并执行本地检查，`make ui-tests` 还需要已安装的 iOS 模拟器运行时。构建输出在 `dist/`，开发期间生成的文件仅用于相应基线的测试，不应标记为第二版正式安装包。本地检查不能替代真机验证。
+
+- [现有兼容范围与已知限制](docs/public/compatibility.md)
 - [反馈与诊断隐私](docs/public/feedback.md)
-- [版本记录](docs/public/CHANGELOG.md)
-- [社区发帖稿](docs/public/forum-post.md)
+- [第一版变更记录](docs/public/CHANGELOG.md)
 
-首次使用先阅读帮助，确认“说明 / 环境”中的版本与编译变体，保持转转前台。新用户自动收藏默认关闭；升级保留已保存的开关值，旧用户请自行核对。建议先关闭收藏，只验证筛选和报告结果。
-
-本版增加任务上限：默认处理 100 件、有效运行 15 分钟，达到任一上限暂停，需新建任务。全局停用会停止任务与采集并保留设置入口、已有结果；已发出的收藏不能撤回。详细边界见安装说明。
-
-仓库包含源码与构建脚本。本地编译和检查通过只能说明对应检查通过，不能替代手机上的安装、连续翻页或收藏验证。发布文件与 SHA-256 校验清单以实际分发包为准，插件只提供本地、手动更新，不自动发帖或发布。
-
-开发者可在安装 Xcode、Python 3 与 Node.js 的 Mac 上进入源码目录，执行 `make check` 构建三种分发格式并运行本地检查；`make ui-tests` 需要已安装的 iOS 模拟器运行时。输出位于 `dist/`，旧版文件不会被自动删除，新版合集只收录当前版本。
+非官方项目，无需另行注册或连接插件服务器。反馈请提供复现步骤及必要诊断，不要上传账号密码、Cookie、Token 或完整抓包。
