@@ -21,6 +21,8 @@
 @property(nonatomic,strong) NSMutableDictionary *detailParts;
 @property(nonatomic,strong) NSTimer *entryTimer;
 @property(nonatomic,strong) UIButton *entryButton;
+@property(nonatomic) BOOL entryDragging;
+@property(nonatomic) CGPoint entryDragStart;
 @property(nonatomic) NSUInteger uiAttempts;
 @property(nonatomic,strong) UITapGestureRecognizer *manualTap;
 @property(nonatomic,strong) UIPanGestureRecognizer *manualPan;
@@ -72,15 +74,29 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 - (void)install {
     [self log:[NSString stringWithFormat:@"插件%@已加载：%s；隐藏采集模式",ZZPickerVersion,ZZ_VARIANT]];
     [[NSNotificationCenter defaultCenter]addObserver:self selector:@selector(background:) name:UIApplicationDidEnterBackgroundNotification object:nil];
-    self.entryButton=[UIButton buttonWithType:UIButtonTypeSystem];self.entryButton.tag=ZZPickerOwnViewTag;[self.entryButton setTitle:@"选机设置" forState:UIControlStateNormal];self.entryButton.accessibilityLabel=@"选机设置与任务";
+    self.entryButton=[UIButton buttonWithType:UIButtonTypeSystem];self.entryButton.tag=ZZPickerOwnViewTag;[self.entryButton setTitle:@"选机设置" forState:UIControlStateNormal];self.entryButton.accessibilityLabel=@"选机设置与任务";self.entryButton.accessibilityHint=@"轻点打开，拖动可移动位置";
     self.entryButton.backgroundColor=[UIColor colorWithRed:1 green:0.94 blue:0.94 alpha:1];[self.entryButton setTitleColor:UIColor.systemRedColor forState:UIControlStateNormal];self.entryButton.layer.cornerRadius=18;self.entryButton.titleLabel.font=[UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
     [self.entryButton addTarget:self action:@selector(entryTapped) forControlEvents:UIControlEventTouchUpInside];[self attachEntry];__weak ZZPicker *weakSelf=self;
+    [self.entryButton addGestureRecognizer:[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(entryDragged:)]];
     self.entryTimer=[NSTimer scheduledTimerWithTimeInterval:2 repeats:YES block:^(NSTimer *timer){(void)timer;[weakSelf checkTaskBudget];[weakSelf attachEntry];}];
 }
 - (void)entryTapped {NSString *state=[self snapshot][@"state"];if(![@[@"idle",@"stopped",@"finished"]containsObject:state])[self showTask];else[self showSettings];}
+- (CGRect)entryTravel:(UIWindow *)window {
+    CGRect safe=UIEdgeInsetsInsetRect(window.bounds,window.safeAreaInsets);
+    return CGRectMake(CGRectGetMinX(safe)+8+43,CGRectGetMinY(safe)+6+18,MAX(0,safe.size.width-16-86),MAX(0,safe.size.height-12-36));
+}
+- (void)entryDragged:(UIPanGestureRecognizer *)pan {
+    UIWindow *window=self.entryButton.window;if(!window)return;CGRect travel=[self entryTravel:window];
+    if(pan.state==UIGestureRecognizerStateBegan){self.entryDragging=YES;self.entryDragStart=self.entryButton.center;}
+    if(pan.state==UIGestureRecognizerStateBegan||pan.state==UIGestureRecognizerStateChanged||pan.state==UIGestureRecognizerStateEnded){
+        CGPoint delta=[pan translationInView:window];self.entryButton.center=CGPointMake(MIN(CGRectGetMaxX(travel),MAX(travel.origin.x,self.entryDragStart.x+delta.x)),MIN(CGRectGetMaxY(travel),MAX(travel.origin.y,self.entryDragStart.y+delta.y)));
+    }
+    if(pan.state==UIGestureRecognizerStateEnded){CGPoint point=self.entryButton.center;[NSUserDefaults.standardUserDefaults setObject:@{@"x":@(travel.size.width?(point.x-travel.origin.x)/travel.size.width:0),@"y":@(travel.size.height?(point.y-travel.origin.y)/travel.size.height:0)} forKey:@"com.codex.zzpicker.entryPosition"];}
+    if(pan.state==UIGestureRecognizerStateEnded||pan.state==UIGestureRecognizerStateCancelled||pan.state==UIGestureRecognizerStateFailed){self.entryDragging=NO;[self attachEntry];}
+}
 - (void)attachEntry {
     UIWindow *window=ZZAppWindow();if(!window)return;if(self.entryButton.superview!=window){[self.entryButton removeFromSuperview];[window addSubview:self.entryButton];}
-    self.entryButton.hidden=ZZSettingsVisible()||ZZViewerVisible();self.entryButton.frame=CGRectMake(MAX(0,window.bounds.size.width-94),window.safeAreaInsets.top+6,86,36);[window bringSubviewToFront:self.entryButton];
+    self.entryButton.hidden=ZZSettingsVisible()||ZZViewerVisible();if(!self.entryDragging){CGRect travel=[self entryTravel:window];NSDictionary *saved=[NSUserDefaults.standardUserDefaults dictionaryForKey:@"com.codex.zzpicker.entryPosition"];id x=saved[@"x"],y=saved[@"y"];BOOL valid=[x isKindOfClass:NSNumber.class]&&[y isKindOfClass:NSNumber.class]&&isfinite([x doubleValue])&&isfinite([y doubleValue]);self.entryButton.bounds=CGRectMake(0,0,86,36);self.entryButton.center=CGPointMake(travel.origin.x+travel.size.width*(valid?MIN(1,MAX(0,[x doubleValue])):1),travel.origin.y+travel.size.height*(valid?MIN(1,MAX(0,[y doubleValue])):0));}[window bringSubviewToFront:self.entryButton];
     if(!self.manualTap){self.manualTap=[[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(manualTouch:)];self.manualPan=[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(manualTouch:)];for(UIGestureRecognizer *g in @[self.manualTap,self.manualPan]){g.delegate=self;g.cancelsTouchesInView=NO;g.delaysTouchesEnded=NO;}}
     if(self.manualTap.view!=window){[self.manualTap.view removeGestureRecognizer:self.manualTap];[self.manualPan.view removeGestureRecognizer:self.manualPan];[window addGestureRecognizer:self.manualTap];[window addGestureRecognizer:self.manualPan];}
 }

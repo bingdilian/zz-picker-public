@@ -1,4 +1,4 @@
-# 安装与使用 · 1.2.0-beta6
+# 安装与使用 · 1.2.0-beta7
 
 这是转转选机助手的社区免费试用版，与转转官方无关。无需付费、另行注册或插件服务器。先阅读[兼容说明](compatibility.md)，保留你手头可用的旧安装包，确认能恢复后再替换。
 
@@ -6,11 +6,11 @@
 
 | 使用环境 | 文件 | 安装方式 |
 |---|---|---|
-| TrollFools | `ZZPicker-1.2.0-beta6-trollfools.dylib` 或 `ZZPicker-1.2.0-beta6-trollfools.zip` | 在 TrollFools 中选择转转，导入其中一种文件并注入 |
-| rootless 越狱 | `ZZPicker-1.2.0-beta6-rootless.deb` | 用对应环境的包管理器安装 |
-| RootHide 环境 | `ZZPicker-1.2.0-beta6-roothide.deb` | 用该环境的包管理器安装，并按环境规则允许转转加载 |
+| TrollFools | `ZZPicker-1.2.0-beta7-trollfools.dylib` 或 `ZZPicker-1.2.0-beta7-trollfools.zip` | 在 TrollFools 中选择转转，导入其中一种文件并注入 |
+| rootless 越狱 | `ZZPicker-1.2.0-beta7-rootless.deb` | 用对应环境的包管理器安装 |
+| RootHide 环境 | `ZZPicker-1.2.0-beta7-roothide.deb` | 用该环境的包管理器安装，并按环境规则允许转转加载 |
 
-`ZZPicker-1.2.0-beta6-release.zip` 为分发合集，包含各安装格式、文档与校验清单；`ZZPicker-1.2.0-beta6-source.zip` 为源码，不是手机安装包。使用 `SHA256SUMS` 核对单个文件；合集本身使用 `ZZPicker-1.2.0-beta6-release.zip.sha256` 核对。文件名或校验不一致时重新取得完整原包。
+`ZZPicker-1.2.0-beta7-release.zip` 为分发合集，包含各安装格式、文档与校验清单；`ZZPicker-1.2.0-beta7-source.zip` 为源码，不是手机安装包。使用 `SHA256SUMS` 核对单个文件；合集本身使用 `ZZPicker-1.2.0-beta7-release.zip.sha256` 核对。文件名或校验不一致时重新取得完整原包。
 
 同一转转 App 只装一种 ZZPicker。先结束任务、完全关闭转转，移除原注入或原包，再安装对应的新文件，最后重开转转。插件不会扩大注入工具支持的设备或系统范围；rootless、RootHide 包尚无本项目真机加载结论。
 
@@ -27,7 +27,11 @@
 
 中央任务窗可收起。搜索加载数按商品去重；明确结论、待确认与命中分别呈现。未知报告不作为命中。加载或页面操作失败时保留队列并暂停，不把点击已发送当成操作成功。翻页、恢复及隐藏采集仍需社区真机验证。
 
+“选机设置”悬浮按钮可直接拖动，位置会保留并限制在屏幕安全区域，轻点仍打开原入口。
+
 ## 收藏与停止
+
+平台换新电池等二次确认弹窗尚未自动处理。现阶段不应认为自动收藏已覆盖所有商品路径。
 
 启用自动收藏后，只对确认命中且未收藏的商品尝试操作原页面收藏控件，回读已收藏才记录成功；原有收藏不应被取消。失败、状态不明或回读失败会显示待确认，不重复点击。**本版自动收藏及成功回读尚无真机完成证据**，建议在只读验证后单独测试一件并手动核对。
 

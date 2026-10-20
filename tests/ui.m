@@ -18,6 +18,14 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
 @implementation ZZTestTouch
 - (UIView *)view {return self.targetView;}
 @end
+@interface ZZTestEntryPan : UIPanGestureRecognizer
+@property(nonatomic) UIGestureRecognizerState eventState;
+@property(nonatomic) CGPoint movement;
+@end
+@implementation ZZTestEntryPan
+- (UIGestureRecognizerState)state {return self.eventState;}
+- (CGPoint)translationInView:(UIView *)view {(void)view;return self.movement;}
+@end
 // The external refresh library is unavailable in the test host; UIKit lists remain real.
 @interface MJRefreshFooter : UIView
 @property(nonatomic) NSInteger state;
@@ -235,6 +243,16 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         }
         [renderSettings.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:6] atScrollPosition:UITableViewScrollPositionBottom animated:NO];[renderSettings.tableView layoutIfNeeded];[self saveScreenshot:@"ui-settings-bottom.png"];
         if(previewClass){self.window.rootViewController=[[UINavigationController alloc]initWithRootViewController:[(UIViewController *)[previewClass alloc]init]];[self.window layoutIfNeeded];[self saveScreenshot:@"ui-diagnostic-preview.png"];}
+        NSString *positionKey=@"com.codex.zzpicker.entryPosition";id savedPosition=[defaults objectForKey:positionKey];[defaults removeObjectForKey:positionKey];ZZPicker *entryPicker=[ZZPicker new];[entryPicker install];UIButton *entryButton=[entryPicker valueForKey:@"entryButton"];
+        BOOL hasEntryPan=NO;for(UIGestureRecognizer *gesture in entryButton.gestureRecognizers)if([gesture isKindOfClass:UIPanGestureRecognizer.class])hasEntryPan=YES;CHECK(hasEntryPan,@"settings entry has no drag gesture");
+        if([entryPicker respondsToSelector:@selector(entryDragged:)]){
+            ZZTestEntryPan *pan=[ZZTestEntryPan new];pan.eventState=UIGestureRecognizerStateBegan;[UIApplication.sharedApplication sendAction:@selector(entryDragged:) to:entryPicker from:pan forEvent:nil];pan.eventState=UIGestureRecognizerStateChanged;pan.movement=CGPointMake(-150,220);[UIApplication.sharedApplication sendAction:@selector(entryDragged:) to:entryPicker from:pan forEvent:nil];CGPoint dragged=entryButton.center;
+            [UIApplication.sharedApplication sendAction:@selector(attachEntry) to:entryPicker from:nil forEvent:nil];CHECK(CGPointEqualToPoint(entryButton.center,dragged),@"periodic attachment resets settings entry during drag");
+            pan.eventState=UIGestureRecognizerStateEnded;[UIApplication.sharedApplication sendAction:@selector(entryDragged:) to:entryPicker from:pan forEvent:nil];[UIApplication.sharedApplication sendAction:@selector(attachEntry) to:entryPicker from:nil forEvent:nil];CHECK(CGPointEqualToPoint(entryButton.center,dragged)&&[defaults dictionaryForKey:positionKey]!=nil,@"settings entry position was not saved after dragging");
+            pan.eventState=UIGestureRecognizerStateBegan;pan.movement=CGPointZero;[UIApplication.sharedApplication sendAction:@selector(entryDragged:) to:entryPicker from:pan forEvent:nil];pan.eventState=UIGestureRecognizerStateChanged;pan.movement=CGPointMake(-10000,10000);[UIApplication.sharedApplication sendAction:@selector(entryDragged:) to:entryPicker from:pan forEvent:nil];CGRect safe=UIEdgeInsetsInsetRect(self.window.bounds,self.window.safeAreaInsets);CHECK(CGRectContainsRect(safe,entryButton.frame),@"dragging can move settings entry outside usable screen bounds");pan.eventState=UIGestureRecognizerStateEnded;[UIApplication.sharedApplication sendAction:@selector(entryDragged:) to:entryPicker from:pan forEvent:nil];
+            ZZTestTouch *touch=[ZZTestTouch new];touch.targetView=entryButton;id<UIGestureRecognizerDelegate> delegate=(id)entryPicker;CHECK(![delegate gestureRecognizer:[entryPicker valueForKey:@"manualPan"] shouldReceiveTouch:touch],@"dragging own settings entry is treated as a manual search-list operation");
+        }else CHECK(NO,@"settings entry drag handler is missing");
+        [[entryPicker valueForKey:@"entryTimer"]invalidate];[entryButton removeFromSuperview];for(NSString *key in @[@"manualTap",@"manualPan"]){UIGestureRecognizer *g=[entryPicker valueForKey:key];[g.view removeGestureRecognizer:g];}if(savedPosition)[defaults setObject:savedPosition forKey:positionKey];else[defaults removeObjectForKey:positionKey];
 
     }@catch(NSException *exception){[failures addObject:exception.reason?:@"native exception"];}
     NSString *folder=NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES).firstObject;NSDictionary *result=@{@"checks":@(checks),@"failures":failures,@"snapshot":ZZPicker.shared.snapshot,@"logs":ZZPicker.shared.logs,@"metadata":self.lastMetadata?:@{}};[[NSJSONSerialization dataWithJSONObject:result options:NSJSONWritingPrettyPrinted error:nil]writeToFile:[folder stringByAppendingPathComponent:@"ui-result.json"]atomically:YES];
