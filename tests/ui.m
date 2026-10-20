@@ -11,6 +11,23 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
 @end
 @interface ZZLabelViewButton : UIView @end
 @implementation ZZLabelViewButton @end
+// UIKit delivers these touch targets; only delivery is substituted in this harness.
+@interface ZZTestTouch : UITouch
+@property(nonatomic,weak) UIView *targetView;
+@end
+@implementation ZZTestTouch
+- (UIView *)view {return self.targetView;}
+@end
+// The external refresh library is unavailable in the test host; UIKit lists remain real.
+@interface MJRefreshFooter : UIView
+@property(nonatomic) NSInteger state;
+@property(nonatomic,weak) UIScrollView *scrollView;
+@property(nonatomic) NSUInteger beginCount;
+- (void)beginRefreshing;
+@end
+@implementation MJRefreshFooter
+- (void)beginRefreshing {self.beginCount++;self.state=3;}
+@end
 @interface TestScene : UIResponder <UIWindowSceneDelegate,UITextFieldDelegate>
 @property(nonatomic,strong) UIWindow *window;
 @property(nonatomic,strong) NSDictionary *filterResponse;
@@ -67,6 +84,24 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         CHECK(!ZZActivateText(@"512G",NO,NO)&&self.innerOptionCalls==noOpBefore&&self.defaultSearchCalls==backdropBefore,@"unsupported capacity wrapper fell through to an inert cell or dismissing backdrop");[backdrop removeFromSuperview];
         UITextField *searchField=[[UITextField alloc]initWithFrame:CGRectMake(20,90,300,44)];searchField.placeholder=@"iphone 15 pro max";searchField.returnKeyType=UIReturnKeySearch;searchField.delegate=self;[self.window.rootViewController.view addSubview:searchField];
         CHECK(ZZSubmitSearch(@"iPhone 15 Pro Max")&&self.searchSubmitCalls==1&&[searchField.text isEqual:@"iPhone 15 Pro Max"],@"nonfocused search field with model placeholder was not submitted");[searchField removeFromSuperview];
+        UITableView *list=[[UITableView alloc]initWithFrame:CGRectMake(20,180,350,500) style:UITableViewStylePlain];list.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;[self.window.rootViewController.view addSubview:list];list.contentSize=CGSizeMake(350,1000);list.contentOffset=CGPointMake(0,500);ZZResetPagination(2);
+        CHECK(!ZZScrollSearchList(),@"unsupported list at bottom reported successful progress forever");
+        MJRefreshFooter *footer=[[MJRefreshFooter alloc]initWithFrame:CGRectMake(0,1000,350,60)];footer.scrollView=list;footer.state=1;[list addSubview:footer];
+        CHECK(ZZScrollSearchList()&&footer.beginCount==1,@"bottom paging did not invoke the owned footer loading entry");
+        CHECK(ZZSearchIsLoading(),@"refreshing footer without a spinner was not recognized as loading");
+        footer.state=1;CHECK(ZZScrollSearchList()&&footer.beginCount==1,@"same page repeatedly invoked the loading entry without a response");
+        NSDictionary *paging=ZZSearchDiagnostics()[@"pagination"];CHECK([paging[@"status"]isEqual:@"waitingResponse"]&&[paging[@"footer"][@"class"]isEqual:@"MJRefreshFooter"]&&[paging[@"contentHeight"]doubleValue]==1000,@"pagination diagnostics lost the selected list and footer state");
+        UITableView *replacement=[[UITableView alloc]initWithFrame:CGRectMake(20,120,388,600) style:UITableViewStylePlain];replacement.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;[self.window.rootViewController.view addSubview:replacement];replacement.contentSize=CGSizeMake(388,1000);replacement.contentOffset=CGPointMake(0,400);MJRefreshFooter *replacementFooter=[[MJRefreshFooter alloc]initWithFrame:CGRectMake(0,1000,388,60)];replacementFooter.scrollView=replacement;replacementFooter.state=1;[replacement addSubview:replacementFooter];
+        CHECK(ZZScrollSearchList()&&replacementFooter.beginCount==0,@"replacing the list bypassed the one-trigger-per-page guard");[replacement removeFromSuperview];
+        footer.state=5;CHECK(!ZZScrollSearchList()&&[ZZSearchDiagnostics()[@"pagination"][@"status"]isEqual:@"noMore"]&&footer.beginCount==1,@"no-more footer was restarted instead of ending pagination");[footer removeFromSuperview];
+        ZZResetPagination(2);footer=[[MJRefreshFooter alloc]initWithFrame:CGRectMake(0,1000,350,60)];footer.scrollView=list;footer.state=1;[list addSubview:footer];MJRefreshFooter *duplicate=[[MJRefreshFooter alloc]initWithFrame:footer.frame];duplicate.scrollView=list;duplicate.state=1;[list addSubview:duplicate];
+        CHECK(!ZZScrollSearchList()&&footer.beginCount==0&&duplicate.beginCount==0,@"ambiguous refresh footers were activated");[duplicate removeFromSuperview];
+        UITableView *disabled=[[UITableView alloc]initWithFrame:CGRectMake(0,100,410,700) style:UITableViewStylePlain];disabled.scrollEnabled=NO;disabled.contentSize=CGSizeMake(410,2000);[self.window.rootViewController.view addSubview:disabled];
+        CHECK(ZZScrollSearchList()&&footer.beginCount==1,@"paging selected a larger disabled list");ZZResetPagination(3);footer.state=1;CHECK(ZZScrollSearchList()&&footer.beginCount==2,@"new page did not reset the one-trigger loading guard");[disabled removeFromSuperview];[footer removeFromSuperview];ZZResetPagination(4);
+        UITableViewCell *nested=[[UITableViewCell alloc]initWithFrame:CGRectMake(0,500,350,120)];[list addSubview:nested];footer=[[MJRefreshFooter alloc]initWithFrame:CGRectMake(0,0,300,60)];footer.scrollView=list;footer.state=1;[nested.contentView addSubview:footer];
+        CHECK(!ZZScrollSearchList()&&footer.beginCount==0,@"paging invoked a nested product-cell refresh control");[nested removeFromSuperview];[list removeFromSuperview];
+        list=[[UITableView alloc]initWithFrame:CGRectMake(20,180,350,500) style:UITableViewStylePlain];list.contentInsetAdjustmentBehavior=UIScrollViewContentInsetAdjustmentNever;[self.window.rootViewController.view addSubview:list];list.contentSize=CGSizeMake(350,200);footer=[[MJRefreshFooter alloc]initWithFrame:CGRectMake(0,500,350,60)];footer.scrollView=list;footer.state=1;[list addSubview:footer];
+        CHECK(ZZScrollSearchList()&&footer.beginCount==1,@"short first page with a load-more footer was rejected");[list removeFromSuperview];
         ZZPicker *picker=ZZPicker.shared;JSContext *js=[picker valueForKey:@"js"];NSDictionary *config=@{@"model":@"iPhone 15 Pro Max",@"autoFavorite":@YES};[picker setValue:config forKey:@"config"];
         JSValue *run=[js[@"ZZCore"][@"Run"]constructWithArguments:@[config]];[picker setValue:run forKey:@"run"];[run invokeMethod:@"start" withArguments:@[]];js[@"testRun"]=run;
         NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;NSDictionary *savedConfig=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v2"];
@@ -162,10 +197,42 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         if([picker respondsToSelector:@selector(diagnosticsWithDetails:)]){NSString *detail=[picker diagnosticsWithDetails:YES];CHECK([detail containsString:@"private-product-title"]&&![detail containsString:@"private-query-token"],@"explicit diagnostic details lost products or leaked product URL");}
         Class previewClass=NSClassFromString(@"ZZDiagnosticsController");CHECK(previewClass!=nil,@"diagnostic preview is missing");
         if(previewClass){UIViewController *preview=[(UIViewController *)[previewClass alloc]init];[preview loadViewIfNeeded];UISwitch *details=(id)FindTestView(preview.view,@"includeProductDetails");UITextView *text=(id)FindTestView(preview.view,@"diagnosticPreview");CHECK(details&&!details.on&&text&&!text.editable&&![text.text containsString:@"private-product-title"],@"diagnostic preview must default to public fields only");details.on=YES;[details sendActionsForControlEvents:UIControlEventValueChanged];CHECK([text.text containsString:@"private-product-title"],@"preview did not refresh after explicit detail opt-in");CHECK(FindTestView(preview.view,@"shareDiagnostic")!=nil,@"preview requires a separate share action");}
-        ZZHideTaskPanel();[picker setValue:migrated.config forKey:@"config"];UITableViewController *renderSettings=[(UITableViewController *)[NSClassFromString(@"ZZSettingsController")alloc]initWithStyle:UITableViewStyleInsetGrouped];
-        self.window.rootViewController=[[UINavigationController alloc]initWithRootViewController:renderSettings];[self.window layoutIfNeeded];[renderSettings.tableView layoutIfNeeded];[self saveScreenshot:@"ui-settings-top.png"];
+        ZZHideTaskPanel();[picker setValue:migrated.config forKey:@"config"];[defaults setBool:YES forKey:@"com.codex.zzpicker.helpSeen"];UITableViewController *renderSettings=[(UITableViewController *)[NSClassFromString(@"ZZSettingsController")alloc]initWithStyle:UITableViewStyleInsetGrouped];
+        UINavigationController *settingsNav=[[UINavigationController alloc]initWithRootViewController:renderSettings];UINavigationBarAppearance *hostAppearance=[UINavigationBarAppearance new];[hostAppearance configureWithTransparentBackground];settingsNav.navigationBar.standardAppearance=hostAppearance;settingsNav.navigationBar.scrollEdgeAppearance=hostAppearance;settingsNav.navigationBar.translucent=YES;
+        self.window.rootViewController=settingsNav;[self.window layoutIfNeeded];[renderSettings.tableView layoutIfNeeded];[self saveScreenshot:@"ui-settings-top.png"];
+        CGRect barRect=[settingsNav.navigationBar convertRect:settingsNav.navigationBar.bounds toView:self.window],tableViewport=[renderSettings.tableView convertRect:renderSettings.tableView.bounds toView:self.window];
+        CHECK(CGRectGetMinY(tableViewport)>=CGRectGetMaxY(barRect)-0.5,@"settings content viewport extends behind the navigation buttons");
+        [renderSettings.tableView setContentOffset:CGPointMake(0,28-renderSettings.tableView.adjustedContentInset.top) animated:NO];[renderSettings.tableView layoutIfNeeded];UITableViewHeaderFooterView *sourceHeader=[renderSettings.tableView headerViewForSection:0];
+        CGRect sourceRect=[sourceHeader.textLabel convertRect:sourceHeader.textLabel.bounds toView:self.window];tableViewport=[renderSettings.tableView convertRect:renderSettings.tableView.bounds toView:self.window];
+        CHECK(sourceHeader&&!CGRectIntersectsRect(CGRectIntersection(sourceRect,tableViewport),barRect),@"scrolled source label overlaps explanation and close controls");[self saveScreenshot:@"ui-settings-scrolled.png"];
+        UIViewController *about=[(UIViewController *)[NSClassFromString(@"ZZAboutController")alloc]init];[settingsNav pushViewController:about animated:NO];[settingsNav popViewControllerAnimated:NO];[settingsNav.view layoutIfNeeded];
+        barRect=[settingsNav.navigationBar convertRect:settingsNav.navigationBar.bounds toView:self.window];tableViewport=[renderSettings.tableView convertRect:renderSettings.tableView.bounds toView:self.window];CHECK(CGRectGetMinY(tableViewport)>=CGRectGetMaxY(barRect)-0.5,@"returning from environment help restored overlapping settings layout");
         CHECK([renderSettings.tableView.dataSource numberOfSectionsInTableView:renderSettings.tableView]==8,@"settings lacks separate limits section");
+        NSArray *originalCapacities=[renderSettings valueForKey:@"capacities"];
+        for(NSArray *capacities in @[@[@"256G",@"512G",@"1T"],@[@"64G",@"128G",@"256G",@"512G",@"1T"]]){
+            [renderSettings setValue:capacities forKey:@"capacities"];
+            for(NSNumber *width in @[@320,@430])for(NSInteger section=1;section<=3;section++){
+                NSIndexPath *path=[NSIndexPath indexPathForRow:0 inSection:section];CGFloat height=[renderSettings.tableView.delegate tableView:renderSettings.tableView heightForRowAtIndexPath:path];UITableViewCell *cell=[renderSettings.tableView.dataSource tableView:renderSettings.tableView cellForRowAtIndexPath:path];cell.frame=CGRectMake(0,0,width.doubleValue,height);[cell setNeedsLayout];[cell layoutIfNeeded];
+                NSString *key=section==1?@"channels":section==2?@"capacities":@"conditions";NSArray *values=section==1?picker.purchaseChannels:section==2?capacities:@[@"99新",@"95新",@"9成新",@"8成新"];BOOL uniform=YES,spacing=YES;CGRect previous=CGRectZero;
+                for(NSString *value in values){NSString *normalized=section==2?[picker normalizedCapacity:value]:value;UIView *button=FindTestView(cell,[NSString stringWithFormat:@"%@|%@",key,normalized]);CGRect rect=[button convertRect:button.bounds toView:cell.contentView];if(!button||fabs(CGRectGetHeight(rect)-28)>0.5||CGRectGetMinY(rect)<5.5||CGRectGetMaxY(rect)>height-5.5)uniform=NO;if(!CGRectIsEmpty(previous)&&CGRectGetMinY(rect)>CGRectGetMinY(previous)+1&&fabs(CGRectGetMinY(rect)-CGRectGetMaxY(previous)-6)>0.5)spacing=NO;previous=rect;}
+                CHECK(uniform&&spacing,@"channel/capacity/condition choices must all be 28pt high with 6pt row gaps");
+            }
+        }
+        [renderSettings setValue:originalCapacities forKey:@"capacities"];
+        NSMutableDictionary *choiceDraft=[renderSettings valueForKey:@"draft"];NSDictionary *beforeChoices=[choiceDraft copy];choiceDraft[@"channels"]=@[@"国行",@"美版",@"港澳台版",@"日版"];choiceDraft[@"capacities"]=@[@"512",@"1024"];choiceDraft[@"conditions"]=@[@"8成新"];[renderSettings setValue:@[@"256G",@"512G",@"1T"] forKey:@"capacities"];[renderSettings.tableView reloadData];[renderSettings.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1] atScrollPosition:UITableViewScrollPositionTop animated:NO];[self saveScreenshot:@"ui-settings-choices.png"];[choiceDraft setDictionary:beforeChoices];[renderSettings setValue:originalCapacities forKey:@"capacities"];[renderSettings.tableView reloadData];
         if([renderSettings.tableView.dataSource numberOfSectionsInTableView:renderSettings.tableView]==8){UITableViewCell *limit=[renderSettings.tableView.dataSource tableView:renderSettings.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:5]];CHECK([((UITextField *)limit.accessoryView).text isEqual:@"100"],@"settings did not show limit default");}
+        UITapGestureRecognizer *dismissTap=nil;for(UIGestureRecognizer *gesture in renderSettings.tableView.gestureRecognizers)if([gesture.name isEqual:@"dismissSettingsKeyboard"])dismissTap=(id)gesture;
+        CHECK(dismissTap&&!dismissTap.cancelsTouchesInView,@"blank-area dismissal is missing or consumes setting controls");
+        if(dismissTap){ZZTestTouch *touch=[ZZTestTouch new];touch.targetView=renderSettings.tableView;BOOL blank=[dismissTap.delegate gestureRecognizer:dismissTap shouldReceiveTouch:touch];UITextField *input=[UITextField new];UILabel *inside=[UILabel new];[input addSubview:inside];touch.targetView=inside;BOOL editing=[dismissTap.delegate gestureRecognizer:dismissTap shouldReceiveTouch:touch];UIButton *choice=[UIButton buttonWithType:UIButtonTypeSystem];[choice addSubview:inside];touch.targetView=inside;BOOL choosing=[dismissTap.delegate gestureRecognizer:dismissTap shouldReceiveTouch:touch];CHECK(blank&&!editing&&!choosing,@"dismiss gesture must accept blank areas and leave field/choice touches alone");}
+        CHECK(renderSettings.tableView.keyboardDismissMode==UIScrollViewKeyboardDismissModeInteractive,@"dragging settings does not dismiss the keyboard");
+        for(NSIndexPath *path in @[[NSIndexPath indexPathForRow:0 inSection:0],[NSIndexPath indexPathForRow:1 inSection:0],[NSIndexPath indexPathForRow:2 inSection:0],[NSIndexPath indexPathForRow:0 inSection:5],[NSIndexPath indexPathForRow:1 inSection:5]]){
+            [renderSettings.tableView scrollToRowAtIndexPath:path atScrollPosition:UITableViewScrollPositionMiddle animated:NO];[renderSettings.tableView layoutIfNeeded];UITextField *field=(id)[renderSettings.tableView cellForRowAtIndexPath:path].accessoryView;
+            CHECK(field&&[field becomeFirstResponder]&&field.isFirstResponder,@"settings field cannot begin editing");NSString *key=field.accessibilityIdentifier;NSString *value=[key isEqual:@"model"]?@"iPhone 16 Pro":@"19";field.text=value;[field sendActionsForControlEvents:UIControlEventEditingChanged];
+            if(dismissTap&&[renderSettings respondsToSelector:@selector(dismissKeyboard)])[UIApplication.sharedApplication sendAction:@selector(dismissKeyboard) to:renderSettings from:dismissTap forEvent:nil];
+            CHECK(!field.isFirstResponder&&[[renderSettings valueForKey:@"draft"][key]isEqual:value],@"blank-area dismissal lost focus or edited value");
+            [field becomeFirstResponder];UIToolbar *toolbar=[field.inputAccessoryView isKindOfClass:UIToolbar.class]?(id)field.inputAccessoryView:nil;UIBarButtonItem *done=toolbar.items.lastObject;BOOL sent=done&&[UIApplication.sharedApplication sendAction:done.action to:done.target from:done forEvent:nil];CHECK(sent&&!field.isFirstResponder,@"keyboard Done does not finish editing this settings field");
+            [field becomeFirstResponder];if([field.delegate respondsToSelector:@selector(textFieldShouldReturn:)])[field.delegate textFieldShouldReturn:field];CHECK(!field.isFirstResponder,@"keyboard Return does not finish editing this settings field");[field resignFirstResponder];
+        }
         [renderSettings.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:6] atScrollPosition:UITableViewScrollPositionBottom animated:NO];[renderSettings.tableView layoutIfNeeded];[self saveScreenshot:@"ui-settings-bottom.png"];
         if(previewClass){self.window.rootViewController=[[UINavigationController alloc]initWithRootViewController:[(UIViewController *)[previewClass alloc]init]];[self.window layoutIfNeeded];[self saveScreenshot:@"ui-diagnostic-preview.png"];}
 

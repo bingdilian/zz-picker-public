@@ -5,7 +5,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 #define ZZPickerOwnViewTag 0x5A5A5001
-#define ZZPickerVersion @"1.2.0-beta1"
+#define ZZPickerVersion @"1.2.0-beta6"
 
 @interface ZZPicker : NSObject <WKScriptMessageHandler>
 + (instancetype)shared;
@@ -69,6 +69,7 @@ FOUNDATION_EXPORT UIViewController * _Nullable ZZTopController(void);
 FOUNDATION_EXPORT BOOL ZZSubmitSearch(NSString *keyword);
 FOUNDATION_EXPORT BOOL ZZOpenNativeProduct(NSDictionary *item);
 FOUNDATION_EXPORT BOOL ZZScrollSearchList(void);
+FOUNDATION_EXPORT void ZZResetPagination(NSUInteger page);
 FOUNDATION_EXPORT BOOL ZZSearchIsLoading(void);
 FOUNDATION_EXPORT NSDictionary *ZZFormValues(NSString *text);
 FOUNDATION_EXPORT BOOL ZZIsObservedURL(NSURL *url);

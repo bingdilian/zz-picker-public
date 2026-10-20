@@ -110,21 +110,64 @@ BOOL ZZOpenNativeProduct(NSDictionary *item) {
         if(p&&[tv.delegate respondsToSelector:@selector(tableView:didSelectRowAtIndexPath:)]){[tv selectRowAtIndexPath:p animated:NO scrollPosition:UITableViewScrollPositionNone];[tv.delegate tableView:tv didSelectRowAtIndexPath:p];return YES;}
     }return NO;
 }
+static BOOL ZZPageTriggered;
+static NSUInteger ZZPageNumber;
+static NSDictionary *ZZPageInfo;
+static NSMutableArray *ZZPageHistory;
+void ZZResetPagination(NSUInteger page) {ZZPageTriggered=NO;ZZPageNumber=page;ZZPageInfo=nil;if(!page)ZZPageHistory=nil;}
+static UIScrollView *ZZPagingList(void) {
+    __block UIScrollView *best=nil;__block CGFloat area=0;UIWindow *window=ZZAppWindow();
+    ZZVisit(window,^(UIView *v){
+        if((![v isKindOfClass:UITableView.class]&&![v isKindOfClass:UICollectionView.class])||!ZZVisible(v))return;
+        UIScrollView *s=(id)v;CGFloat a=s.bounds.size.width*s.bounds.size.height;
+        if(s.scrollEnabled&&s.bounds.size.width>=window.bounds.size.width*0.5&&s.bounds.size.height>=180&&a>area){area=a;best=s;}
+    });return best;
+}
+static void ZZVisitFooterViews(UIView *root,void (^block)(UIView *)) {
+    for(UIView *v in root.subviews){
+        if(v.tag==ZZPickerOwnViewTag||[v isKindOfClass:UITableViewCell.class]||[v isKindOfClass:UICollectionViewCell.class]||[v isKindOfClass:UIScrollView.class])continue;
+        block(v);ZZVisitFooterViews(v,block);
+    }
+}
+static NSNumber *ZZFooterState(UIView *footer,UIScrollView *list) {
+    Class cls=NSClassFromString(@"MJRefreshFooter");if(!cls||![footer isKindOfClass:cls])return nil;
+    @try{if([footer valueForKey:@"scrollView"]!=list)return nil;id state=[footer valueForKey:@"state"];return [state isKindOfClass:NSNumber.class]?state:nil;}@catch(NSException *exception){(void)exception;return nil;}
+}
+static NSArray<UIView *> *ZZPagingFooters(UIScrollView *list) {
+    NSMutableArray *footers=[NSMutableArray new];ZZVisitFooterViews(list,^(UIView *v){if(ZZFooterState(v,list))[footers addObject:v];});return footers;
+}
+static NSDictionary *ZZPagingMetrics(UIScrollView *list) {
+    if(!list)return @{};NSMutableArray *footers=[NSMutableArray new];
+    ZZVisitFooterViews(list,^(UIView *v){NSString *name=NSStringFromClass(v.class);if(footers.count>=12||(![name.lowercaseString containsString:@"footer"]&&![name.lowercaseString containsString:@"refresh"]))return;
+        [footers addObject:@{@"class":name,@"frame":NSStringFromCGRect(v.frame),@"hidden":@(v.hidden),@"state":ZZFooterState(v,list)?:NSNull.null}];
+    });
+    return @{@"class":NSStringFromClass(list.class),@"frame":NSStringFromCGRect([list convertRect:list.bounds toView:list.window]),@"offsetY":@(list.contentOffset.y),@"contentHeight":@(list.contentSize.height),@"viewportHeight":@(list.bounds.size.height),@"bottomY":@(MAX(-list.adjustedContentInset.top,list.contentSize.height-list.bounds.size.height+list.adjustedContentInset.bottom)),@"footers":footers};
+}
+static BOOL ZZPageRecord(NSString *status,UIScrollView *list,UIView *footer,BOOL accepted) {
+    NSMutableDictionary *info=[ZZPagingMetrics(list)mutableCopy];info[@"status"]=status;info[@"page"]=@(ZZPageNumber);
+    if(footer)info[@"footer"]=@{@"class":NSStringFromClass(footer.class),@"state":ZZFooterState(footer,list)?:NSNull.null};
+    ZZPageInfo=info;if(!ZZPageHistory)ZZPageHistory=[NSMutableArray new];if(![ZZPageHistory.lastObject isEqual:info]){[ZZPageHistory addObject:info];if(ZZPageHistory.count>16)[ZZPageHistory removeObjectAtIndex:0];}return accepted;
+}
 BOOL ZZSearchIsLoading(void) {
     __block BOOL loading=NO;
     ZZVisit(ZZAppWindow(),^(UIView *v){if([v isKindOfClass:UIActivityIndicatorView.class]&&ZZVisible(v)&&((UIActivityIndicatorView *)v).isAnimating)loading=YES;});
+    UIScrollView *list=ZZPagingList();for(UIView *footer in ZZPagingFooters(list)){NSInteger state=ZZFooterState(footer,list).integerValue;if(state==3||state==4)loading=YES;}
     return loading;
 }
 BOOL ZZScrollSearchList(void) {
-    __block UIScrollView *best=nil;__block CGFloat area=0;
-    ZZVisit(ZZAppWindow(),^(UIView *v){
-        if((![v isKindOfClass:UITableView.class]&&![v isKindOfClass:UICollectionView.class])||!ZZVisible(v))return;
-        UIScrollView *s=(UIScrollView *)v;CGFloat a=s.bounds.size.width*s.bounds.size.height;
-        if(s.contentSize.height>s.bounds.size.height&&a>area){area=a;best=s;}
-    });
-    if(!best)return NO;
-    CGFloat y=MIN(best.contentOffset.y+MAX(200,best.bounds.size.height*0.8),MAX(-best.adjustedContentInset.top,best.contentSize.height-best.bounds.size.height+best.adjustedContentInset.bottom));
-    [best setContentOffset:CGPointMake(best.contentOffset.x,y) animated:YES];return YES;
+    UIScrollView *list=ZZPagingList();if(!list)return ZZPageRecord(@"missingList",nil,nil,NO);
+    CGFloat bottom=MAX(-list.adjustedContentInset.top,list.contentSize.height-list.bounds.size.height+list.adjustedContentInset.bottom);
+    if(list.contentOffset.y<bottom-2){CGFloat y=MIN(list.contentOffset.y+MAX(200,list.bounds.size.height*0.8),bottom);[list setContentOffset:CGPointMake(list.contentOffset.x,y) animated:YES];return ZZPageRecord(@"scrolling",list,nil,YES);}
+    NSArray *footers=ZZPagingFooters(list);if(footers.count>1)return ZZPageRecord(@"ambiguousFooter",list,nil,NO);
+    UIView *footer=footers.firstObject;NSInteger state=ZZFooterState(footer,list).integerValue;
+    // MJRefresh distinguishes idle, active (3/4), and exhausted (5); never reset exhaustion.
+    if(state==5)return ZZPageRecord(@"noMore",list,footer,NO);
+    if(state==3||state==4)return ZZPageRecord(@"loading",list,footer,YES);
+    if(ZZPageTriggered)return ZZPageRecord(@"waitingResponse",list,footer,YES);
+    if(!footer||footer.hidden||!(state==1||state==2))return ZZPageRecord(@"unsupportedFooter",list,footer,NO);
+    ZZPageTriggered=YES;
+    if(!ZZInvokeRegisteredAction(footer,NSSelectorFromString(@"beginRefreshing"),footer)){ZZPageTriggered=NO;return ZZPageRecord(@"unsupportedFooter",list,footer,NO);}
+    return ZZPageRecord(@"triggered",list,footer,YES);
 }
 
 
@@ -192,7 +235,7 @@ NSDictionary *ZZSearchDiagnostics(void) {
     ZZVisit(window,^(UIView *v){if(entries.count>=100||!ZZVisible(v)||[v convertRect:v.bounds toView:window].origin.y>window.safeAreaInsets.top+440)return;
         if([v isKindOfClass:UITextField.class]){UITextField *f=(id)v;[entries addObject:@{@"class":NSStringFromClass(v.class),@"frame":NSStringFromCGRect([v convertRect:v.bounds toView:window]),@"placeholder":f.placeholder?:@"",@"editable":@(f.enabled&&f.canBecomeFirstResponder)}];}
         else if(v.gestureRecognizers.count||[v isKindOfClass:UIControl.class])[entries addObject:@{@"class":NSStringFromClass(v.class),@"frame":NSStringFromCGRect([v convertRect:v.bounds toView:window]),@"gestures":@(v.gestureRecognizers.count)}];
-    });return @{@"surface":ZZSearchSurface(),@"entries":entries,@"activationHistory":[ZZActivationHistory copy]?:@[]};
+    });return @{@"surface":ZZSearchSurface(),@"entries":entries,@"activationHistory":[ZZActivationHistory copy]?:@[],@"pagination":ZZPageInfo?:@{},@"paginationHistory":[ZZPageHistory copy]?:@[],@"pagingList":ZZPagingMetrics(ZZPagingList())};
 }
 @interface ZZFilterDriver ()
 @property(nonatomic,copy) NSDictionary *config;

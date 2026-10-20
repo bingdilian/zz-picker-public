@@ -13,7 +13,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / 'build'
 DIST = ROOT / 'dist'
-VERSION = '1.2.0-beta1'
+VERSION = '1.2.0-beta6'
 
 def run(args):
     subprocess.run(args, cwd=ROOT, check=True)
@@ -68,7 +68,7 @@ def deb(variant, dylib):
     binary = dylib.read_bytes()
     control = ('Package: com.codex.zzpicker\n'
                'Name: 转转选机助手\n'
-               'Version: 1.2.0~beta1\n'
+               'Version: 1.2.0~beta6\n'
                f'Architecture: {arch}\n'
                'Maintainer: Local Developer\n'
                'Section: Tweaks\n'

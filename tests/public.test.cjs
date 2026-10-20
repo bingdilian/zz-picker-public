@@ -78,3 +78,11 @@ test('opt-in diagnostics include excluded evaluations as well as hits',()=>{
  assert.equal(C.diagnosticSnapshot(source,true).results[0].status,'reject');
  assert.equal(C.diagnosticSnapshot(source,true).results[0].id,f.id);
 });
+
+test('only the active next-page token can finish a confirmed exhausted list',()=>{
+ const {r}=run();assert.equal(typeof r.endOfList,'function');
+ let a=r.next();assert.equal(r.endOfList(a.token),false);const p=product(f.id);p.model='iPhone 13';r.detail(p,a.token);a=r.next();r.returned(a.token);a=r.next();assert.equal(a.type,'nextPage');
+ assert.equal(r.endOfList({...a.token,step:a.token.step-1}),false);assert.equal(r.endOfList(a.token),true);assert.equal(r.snapshot().state,'finished');assert.equal(r.snapshot().counts.processed,1);assert.equal(r.snapshot().counts.loaded,1);assert.equal(r.next(),null);
+ assert.equal(r.search(response([item('999')]),2,a.token,{}),false);
+ const paused=run().r;let b=paused.next(),q=product(f.id);q.model='iPhone 13';paused.detail(q,b.token);b=paused.next();paused.returned(b.token);b=paused.next();paused.pause();assert.equal(paused.endOfList(b.token),false);
+});

@@ -1,4 +1,4 @@
-# 转转选机助手 1.2.0-beta1｜社区免费试用
+# 转转选机助手 1.2.0-beta6｜社区免费试用
 
 我准备了一版非官方转转选机助手，邀请愿意提供实际测试反馈的朋友免费试用。按型号、待售手机 iOS 区间、购买渠道、容量和成色筛选，读取验机报告后显示命中并暂停，可查看详情或继续扫描。无需付费、另行注册或连接插件服务器。
 
@@ -10,10 +10,10 @@
 
 分发附件按文件名选择，合集中的说明与校验清单一并保留：
 
-- [TrollFools dylib](ZZPicker-1.2.0-beta1-trollfools.dylib) / [TrollFools zip](ZZPicker-1.2.0-beta1-trollfools.zip)，任选一种。
-- [rootless deb](ZZPicker-1.2.0-beta1-rootless.deb) / [RootHide deb](ZZPicker-1.2.0-beta1-roothide.deb)，按实际环境选择。
-- [源码包](ZZPicker-1.2.0-beta1-source.zip) / [分发合集](ZZPicker-1.2.0-beta1-release.zip)。
-- [单文件校验清单](SHA256SUMS) / [合集 SHA-256](ZZPicker-1.2.0-beta1-release.zip.sha256)。
+- [TrollFools dylib](ZZPicker-1.2.0-beta6-trollfools.dylib) / [TrollFools zip](ZZPicker-1.2.0-beta6-trollfools.zip)，任选一种。
+- [rootless deb](ZZPicker-1.2.0-beta6-rootless.deb) / [RootHide deb](ZZPicker-1.2.0-beta6-roothide.deb)，按实际环境选择。
+- [源码包](ZZPicker-1.2.0-beta6-source.zip) / [分发合集](ZZPicker-1.2.0-beta6-release.zip)。
+- [单文件校验清单](SHA256SUMS) / [合集 SHA-256](ZZPicker-1.2.0-beta6-release.zip.sha256)。
 
 以上链接按附件文件名编写，正式发帖时需随帖附上对应文件。这份文稿本身不表示文件已上线。
 

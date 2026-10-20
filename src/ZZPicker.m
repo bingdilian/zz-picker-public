@@ -99,7 +99,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if([[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool])return @"上一笔收藏仍在处理中，请先等待结果或重开转转核对收藏";
     NSDictionary *checked=[[self.js[@"ZZCore"]invokeMethod:@"validateConfig" withArguments:@[config]]toDictionary];if(![checked[@"ok"]boolValue])return [checked[@"errors"]componentsJoinedByString:@"；"]?:@"配置无效";
     if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];ZZStopCollector();self.config=checked[@"config"];[NSUserDefaults.standardUserDefaults setObject:self.config forKey:@"com.codex.zzpicker.config.v2"];
-    self.run=[self.js[@"ZZCore"][@"Run"]constructWithArguments:@[self.config]];[self.run invokeMethod:@"start" withArguments:@[]];self.searchController=nil;[self.detailParts removeAllObjects];[self.searchTrace removeAllObjects];
+    self.run=[self.js[@"ZZCore"][@"Run"]constructWithArguments:@[self.config]];[self.run invokeMethod:@"start" withArguments:@[]];self.searchController=nil;[self.detailParts removeAllObjects];[self.searchTrace removeAllObjects];ZZResetPagination(0);
     JSValue *started=self.run;[self log:[NSString stringWithFormat:@"从%@开始新任务；等待实际筛选请求确认",ZZSearchSurface()]];
     ZZDismissSettings(^{if(self.run==started&&[[self snapshot][@"state"]isEqual:@"search"]){[self attachEntry];[self pump];[self showTask];}});return nil;
 }
@@ -183,6 +183,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     self.uiAttempts=0;NSString *type=next[@"type"];self.pendingFilterResponse=nil;
     self.filterDriver=[type isEqual:@"filters"]?[[ZZFilterDriver alloc]initWithConfig:self.config fields:next[@"applyFields"]?:@[@"capacities",@"conditions"]]:nil;
     self.pageWait=[type isEqual:@"nextPage"]?[self.js[@"ZZCore"][@"PageWait"]constructWithArguments:@[next[@"token"],next[@"page"],@(NSProcessInfo.processInfo.systemUptime*1000)]]:nil;
+    if([type isEqual:@"nextPage"])ZZResetPagination([next[@"page"]unsignedIntegerValue]);
     if(self.pageWait&&[[self snapshot][@"waitingResponse"]boolValue])[self.pageWait invokeMethod:@"requestStarted" withArguments:@[next[@"page"],next[@"token"]]];
     if([type isEqual:@"open"])[self.detailParts removeAllObjects];[self prepareAllWebViews];[self changed];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,350*NSEC_PER_MSEC),dispatch_get_main_queue(),^{[self drive:next];});
@@ -198,7 +199,16 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if([type isEqual:@"search"]){if(!ZZSubmitSearch(a[@"keyword"])){if(++self.uiAttempts<16)dispatch_after(dispatch_time(DISPATCH_TIME_NOW,650*NSEC_PER_MSEC),dispatch_get_main_queue(),^{[self drive:a];});else[self pause:[NSString stringWithFormat:@"%@的搜索入口暂未识别，设置已保留；请导出诊断",ZZSearchSurface()]];}}
     else if([type isEqual:@"filters"]){[self prepareAllWebViews];[self.filterDriver step];if(self.filterDriver.complete&&self.pendingFilterResponse){NSDictionary *pending=self.pendingFilterResponse;self.pendingFilterResponse=nil;[self observeJSON:pending[@"json"] metadata:pending[@"metadata"] webView:nil];if(![self isCurrent:a])return;}dispatch_after(dispatch_time(DISPATCH_TIME_NOW,650*NSEC_PER_MSEC),dispatch_get_main_queue(),^{if([self isCurrent:a])[self drive:a];});}
     else if([type isEqual:@"open"]){BOOL safe=[[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[a[@"item"][@"jumpUrl"]?:@"",a[@"item"][@"id"]]]toBool];if(!safe||!ZZLoadCollector(a[@"item"],NO))[self pause:@"隐藏详情采集尚未建立；请手动打开一件商品后返回列表，再继续。不会自动弹出详情"];}
-    else if([type isEqual:@"nextPage"]){NSString *decision=[[self.pageWait invokeMethod:@"poll" withArguments:@[@(NSProcessInfo.processInfo.systemUptime*1000),@(ZZSearchIsLoading())]]toString];if([decision isEqual:@"timeout"]){[self pause:self.pageWait[@"requestSeen"].toBool?@"下一页请求在60秒内未返回，队列已保留":@"60秒内未观察到下一页请求，请导出诊断适配加载入口"];return;}if([decision isEqual:@"scroll"]&&!ZZScrollSearchList()){[self pause:@"列表滚动入口暂未识别，队列已保留"];return;}dispatch_after(dispatch_time(DISPATCH_TIME_NOW,1200*NSEC_PER_MSEC),dispatch_get_main_queue(),^{if([self isCurrent:a])[self drive:a];});}
+    else if([type isEqual:@"nextPage"]){
+        NSString *decision=[[self.pageWait invokeMethod:@"poll" withArguments:@[@(NSProcessInfo.processInfo.systemUptime*1000),@(ZZSearchIsLoading())]]toString];
+        if([decision isEqual:@"timeout"]){[self pause:self.pageWait[@"requestSeen"].toBool?@"下一页请求在60秒内未返回，队列已保留":@"60秒内未观察到下一页请求；请导出翻页诊断核对加载控件"];return;}
+        if([decision isEqual:@"scroll"]){BOOL accepted=ZZScrollSearchList();NSDictionary *info=ZZSearchDiagnostics()[@"pagination"];NSString *status=info[@"status"];
+            if([status isEqual:@"noMore"]){[self.run invokeMethod:@"endOfList" withArguments:@[a[@"token"]]];[self log:@"列表加载控件已确认没有更多商品"];[self pump];return;}
+            if(!accepted){[self pause:[status isEqual:@"missingList"]?@"商品列表滚动入口未识别，队列已保留":@"列表已到底部，但上拉加载控件未确认；任务已暂停，请导出翻页诊断以继续适配"];return;}
+            if([status isEqual:@"triggered"])[self log:[NSString stringWithFormat:@"第%@页：已调用%@的加载入口，等待实际搜索请求",a[@"page"],info[@"footer"][@"class"]]];
+        }
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW,1200*NSEC_PER_MSEC),dispatch_get_main_queue(),^{if([self isCurrent:a])[self drive:a];});
+    }
     else if([type isEqual:@"favorite"]){if(!self.detailWeb){[self pause:@"隐藏收藏页面未建立"];return;}if(![[self.mutations invokeMethod:@"begin" withArguments:@[a[@"id"],a[@"token"]]]toBool]){[self pause:@"上一笔收藏尚未返回，已暂停"];return;}
         [self.detailWeb evaluateJavaScript:[NSString stringWithFormat:@"window.ZZWeb?window.ZZWeb.favorite(%@):({ok:false,reason:'收藏桥接未建立'})",[self jsonString:a[@"id"]]] completionHandler:^(id result,NSError *error){
             BOOL refused=!error&&[result isKindOfClass:NSDictionary.class]&&[result[@"ok"]isEqual:@NO];if(refused)[self.mutations invokeMethod:@"complete" withArguments:@[a[@"id"],a[@"token"]]];
