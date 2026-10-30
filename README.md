@@ -109,6 +109,6 @@
 
 后续重点验证其他机型与安装格式、连续翻页与超时恢复、单一成色的字段一致性，以及平台焕新电池的收藏二次确认流程。巨魔 / 越狱兼容性筛选与机型选择器在 [v2-compatibility](https://github.com/bingdilian/zz-picker/tree/v2-compatibility) 分支开发，**尚未包含在 beta9**。
 
-发现问题时，请在 [GitHub Issues](https://github.com/bingdilian/zz-picker/issues) 或原讨论中提供：实际手机型号、iOS、转转版本、插件版本、注入工具与文件格式、复现步骤、暂停提示，以及预览检查后的诊断。收藏异常先核对转转收藏页，再反馈，详见[反馈说明](docs/public/feedback.md)。
+发现问题时，请在 [v1 问题反馈表单](https://github.com/bingdilian/zz-picker/issues/new?template=v1-bug-report.yml) 或原讨论中提供：实际手机型号、iOS、转转版本、插件版本、注入工具与文件格式、复现步骤、暂停提示，以及预览检查后的诊断。收藏异常先核对转转收藏页，再反馈，详见[反馈说明](docs/public/feedback.md)。
 
 开发者可使用 Mac 上的 Xcode、Python 3 和 Node.js 执行 `make check`；界面检查使用 `make ui-tests`。本地检查和模拟器结果不替代上述真机实践。

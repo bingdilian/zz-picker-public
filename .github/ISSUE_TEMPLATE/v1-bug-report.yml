@@ -1,0 +1,123 @@
+name: v1 问题反馈
+description: 反馈第一版的安装、搜索、筛选、翻页、收藏或界面问题。
+title: "[v1 问题] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请填写实际运行插件的手机环境，不要把搜索目标机型或待售商品的 iOS 当作自己的手机环境。
+        可在插件的“说明 / 环境”中查看版本信息；无法打开时请注明。
+        目前仅使用 TrollFools 注入 dylib 完成真机测试，其他方式请如实填写。
+        分享诊断前请先预览，勿上传 Cookie、Token、密码、完整抓包、地址或其他个人信息。
+        收藏异常请先手动核对转转收藏页，避免反复点击。
+  - type: input
+    id: device
+    attributes:
+      label: 实际手机型号
+      placeholder: 例如 iPhone 13 Pro Max；也可附“说明 / 环境”中的型号代码
+    validations:
+      required: true
+  - type: input
+    id: ios
+    attributes:
+      label: 手机 iOS 版本
+      placeholder: 例如 15.4.1
+    validations:
+      required: true
+  - type: input
+    id: app-version
+    attributes:
+      label: 转转 App 版本
+      placeholder: 例如 12.8.5；无法确认请注明
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: 插件版本
+      description: 请填写当前实际加载的版本，而非刚下载的文件版本。
+      placeholder: 例如 1.2.0-beta9；无法加载请注明文件名
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: 安装或注入方式
+      options:
+        - TrollFools 注入 dylib
+        - TrollFools 直接导入 zip
+        - 普通 Dopamine / rootless deb
+        - Dopamine RootHide / roothide deb
+        - 其他或无法确认（请在补充信息中说明）
+    validations:
+      required: true
+  - type: input
+    id: tool-version
+    attributes:
+      label: 注入工具或越狱工具版本
+      placeholder: 例如 TrollFools 的具体版本；不清楚可注明
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 问题发生在哪一步
+      multiple: true
+      options:
+        - 安装或插件加载
+        - 设置保存或界面操作
+        - 首页搜索或列表启动
+        - 容量、成色或购买渠道筛选
+        - 报告读取或 iOS 核验
+        - 翻页、加载或超时恢复
+        - 收藏、二次确认或状态回读
+        - 暂停、继续、结束或运行上限
+        - 诊断导出或其他
+    validations:
+      required: true
+  - type: dropdown
+    id: auto-favorite
+    attributes:
+      label: 发生问题时自动收藏是否开启
+      options:
+        - 开启
+        - 关闭
+        - 无法确认或尚未进入设置
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: 搜索条件与任务状态
+      description: 可填写文字或附已检查隐私的截图。请勿填写商品完整 IMEI。
+      placeholder: |
+        搜索型号 / 最低 iOS / 最高 iOS：
+        购买渠道 / 容量 / 成色：
+        件数上限 / 分钟上限：
+        商品数 / 已核验 / 命中 / 暂停提示：
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 从首页、列表页还是详情页开始？期间是否手动滑动、切后台或锁屏？
+      placeholder: |
+        1. 打开……
+        2. 设置……并开始任务
+        3. 执行……后出现问题
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 预期结果与实际结果
+      description: 收藏问题请说明任务显示的状态，以及手动查看后是否已收藏、是否出现二次确认弹窗。
+      placeholder: |
+        预期结果：
+        实际结果 / 完整提示：
+        是否每次出现；重开转转后是否仍出现：
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 诊断、截图与补充信息（可选）
+      description: 在插件中“预览与分享诊断”，检查内容后再粘贴或拖入附件；默认诊断不含商品明细。没有附件也可反馈。
+      placeholder: 可附诊断文件、截图或录屏，并补充其他插件、最近更新等有关信息。请勿上传原始抓包或鉴权信息。
