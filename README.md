@@ -112,3 +112,7 @@
 发现问题时，请在 [v1 问题反馈表单](https://github.com/bingdilian/zz-picker/issues/new?template=v1-bug-report.yml) 或原讨论中提供：实际手机型号、iOS、转转版本、插件版本、注入工具与文件格式、复现步骤、暂停提示，以及预览检查后的诊断。收藏异常先核对转转收藏页，再反馈，详见[反馈说明](docs/public/feedback.md)。
 
 开发者可使用 Mac 上的 Xcode、Python 3 和 Node.js 执行 `make check`；界面检查使用 `make ui-tests`。本地检查和模拟器结果不替代上述真机实践。
+
+## 许可证
+
+本项目源码采用 [MIT License](LICENSE)。允许使用、修改、分发、商业使用及闭源衍生；分发时须保留版权及许可声明。软件按原样提供，不作担保。转转 App、商标及截图中的第三方内容不在本项目源码的授权范围内。
