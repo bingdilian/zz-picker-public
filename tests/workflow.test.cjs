@@ -130,3 +130,20 @@ test('nonselected or unknown channels never issue favorites and records retain t
  for(const channel of ['港澳台版',null]){const r=started({autoFavorite:true}),a=r.next(),p=product();p.channel=channel;r.detail(p,a.token);assert.equal(r.next().type,'back');assert.equal(r.snapshot().counts.matched,0);assert.equal(r.snapshot().allResults[0].channel,channel||'');}
  const r=hold(started({channels:['国行']}));assert.equal(r.snapshot().hit.channel,'国行');assert.equal(r.snapshot().results[0].channel,'国行');
 });
+
+test('returning from a manually favorited unknown result rechecks without another mutation or duplicate count',()=>{
+ const r=started({autoFavorite:true});let a=r.next();r.detail(product(),a.token);a=r.next();r.failed('timeout',a.token);a=r.next();r.verified(null,a.token);
+ assert.equal(r.snapshot().counts.favoriteUnknown,1);const old=a.token;
+ assert.equal(r.recheckFavorite(),true);a=r.next();assert.equal(a.type,'verify');assert.equal(a.item.id,f.id);assert.equal(a.item.jumpUrl,f.item.jumpUrl);assert.equal(r.verified(true,old),false);
+ assert.equal(r.verified(false,a.token),true);assert.equal(r.snapshot().counts.favoriteUnknown,1);assert.equal(r.snapshot().allResults.length,1);
+ assert.equal(r.recheckFavorite(),true);a=r.next();assert.equal(r.verified(true,a.token),true);
+ assert.equal(r.snapshot().counts.favorited,1);assert.equal(r.snapshot().counts.favoriteUnknown,0);assert.equal(r.snapshot().allResults.length,1);
+ assert.equal(r.snapshot().hit.status,'favorited');assert.equal(r.recheckFavorite(),false);assert.equal(r.verified(true,a.token),false);
+});
+
+test('stopping during a read-only favorite recheck preserves one uncertain result and accepts late verification',()=>{
+ const r=started({autoFavorite:true});let a=r.next();r.detail(product(),a.token);a=r.next();r.failed('timeout',a.token);a=r.next();r.verified(null,a.token);
+ r.recheckFavorite();a=r.next();r.stop();assert.equal(r.snapshot().counts.favoriteUnknown,1);assert.equal(r.snapshot().allResults.length,1);
+ assert.equal(r.settleStopped('baseInfo',{respCode:0,respData:{collected:true}},f.id,a.token),true);
+ assert.equal(r.snapshot().counts.favoriteUnknown,0);assert.equal(r.snapshot().counts.favorited,1);assert.equal(r.snapshot().allResults.length,1);assert.equal(r.snapshot().hit.status,'favorited');assert.equal(r.next(),null);
+});

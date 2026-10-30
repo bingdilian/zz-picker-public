@@ -1,21 +1,21 @@
-# 转转选机助手 1.2.0-beta7｜社区免费试用
+# 转转选机助手 1.2.0-beta9｜社区免费试用
 
 我准备了一版非官方转转选机助手，邀请愿意提供实际测试反馈的朋友免费试用。按型号、待售手机 iOS 区间、购买渠道、容量和成色筛选，读取验机报告后显示命中并暂停，可查看详情或继续扫描。无需付费、另行注册或连接插件服务器。
 
 适配基线为转转 **12.8.5**，动态库 **arm64 / 最低 iOS 15.0**；实际安装还取决于注入工具与设备环境。提供 TrollFools、rootless 和 RootHide 三种文件，不代表三个环境都已实机通过。
 
-beta7 新增“选机设置”悬浮入口拖动与位置保存，保留紧凑等高选项、输入收键盘、顶部布局与翻页适配。另提供首次使用帮助、环境信息、全局停用、任务件数与时间上限，以及预览后手动分享诊断。新用户自动收藏默认关闭；升级保留已有开关值，请先核对。默认最多处理 100 件、有效运行 15 分钟，暂停与查看详情不计时，达到上限需要新建任务。停用或结束无法撤回已经发出的收藏。
+beta9 修复收藏待确认后全局等待无法结束的问题，并增加详情返回只读核验与收藏诊断。保留 beta8 的设置保存修复。禁止下滑直接关闭设置，已有任务沿用启动条件。保留 beta7 的悬浮入口拖动与此前修复。另提供首次使用帮助、环境信息、全局停用、任务件数与时间上限，以及预览后手动分享诊断。新用户自动收藏默认关闭；升级保留已有开关值，请先核对。默认最多处理 100 件、有效运行 15 分钟，暂停与查看详情不计时，达到上限需要新建任务。停用或结束无法撤回已经发出的收藏。
 
 目前实机证据仅来自旧版 test5：iPhone 13 Pro Max / iOS 15.4.1 / TrollFools，最终搜索确认 512G + 99新，加载 20 件、处理 4 件、排除 3 件、命中 1 件，自动收藏关闭，随后结束任务。购买渠道筛选、连续翻页、自动收藏回读及 rootless / RootHide 加载仍待验证，本版新增行为也需要手机验收。请先关闭收藏做只读测试；不承诺所有版本兼容或账号风险为零。
 
-下载请打开 [GitHub beta7 Release](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta7)，按文件名选择，合集中的说明与校验清单一并保留：
+下载请打开 [GitHub beta7 Release](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta9)，按文件名选择，合集中的说明与校验清单一并保留：
 
-- [TrollFools dylib](ZZPicker-1.2.0-beta7-trollfools.dylib) / [TrollFools zip](ZZPicker-1.2.0-beta7-trollfools.zip)，任选一种。
-- [rootless deb](ZZPicker-1.2.0-beta7-rootless.deb) / [RootHide deb](ZZPicker-1.2.0-beta7-roothide.deb)，按实际环境选择。
-- [源码包](ZZPicker-1.2.0-beta7-source.zip) / [分发合集](ZZPicker-1.2.0-beta7-release.zip)。
-- [单文件校验清单](SHA256SUMS) / [合集 SHA-256](ZZPicker-1.2.0-beta7-release.zip.sha256)。
+- [TrollFools dylib](ZZPicker-1.2.0-beta9-trollfools.dylib) / [TrollFools zip](ZZPicker-1.2.0-beta9-trollfools.zip)，任选一种。
+- [rootless deb](ZZPicker-1.2.0-beta9-rootless.deb) / [RootHide deb](ZZPicker-1.2.0-beta9-roothide.deb)，按实际环境选择。
+- [源码包](ZZPicker-1.2.0-beta9-source.zip) / [分发合集](ZZPicker-1.2.0-beta9-release.zip)。
+- [单文件校验清单](SHA256SUMS) / [合集 SHA-256](ZZPicker-1.2.0-beta9-release.zip.sha256)。
 
-以上相对链接用于随包说明；在 GitHub 仓库或论坛中请使用上方 Release 页面。平台换新电池的收藏二次确认尚未自动处理，遇到该提示可能等待超时。
+以上相对链接用于随包说明；正式分享前需先上传相应附件并替换为实际下载链接。平台换新电池的收藏二次确认尚未自动处理，遇到该提示可能等待超时。
 
 安装前先移除同一 App 的旧 ZZPicker 注入，完全关闭转转，再安装一种对应格式。保留你自己的旧包方便回退，旧测试包不能当作稳定版。运行时保持转转前台；不会后台持续扫描或自动更新。
 

@@ -1,25 +1,25 @@
-# 转转选机助手 · 1.2.0-beta7（悬浮按钮拖动测试包）
+# 转转选机助手 · 1.2.0-beta9（收藏收尾修复测试包）
 
 面向社区免费试用的非官方插件。按型号、待售手机 iOS 区间、购买渠道、容量和成色筛选商品，在转转前台逐件读取验机报告，命中后暂停供你查看。无需另行注册、付费或连接插件服务器。
 
-第一版当前测试版本为 **1.2.0-beta7**，对应分支 `v1-compatibility`。“选机设置”悬浮按钮支持拖动、保存相对位置并限制在屏幕安全区域；定时刷新不会将其移回右上角。同时包含 beta6 的 28 点紧凑等高选项、输入结束与收键盘处理、顶部布局修复，以及翻页入口适配与诊断；真实转转连续翻页、拖动和收藏仍需真机验证。
+第一版当前版本为 **1.2.0-beta9**，对应分支 `v1-compatibility`。修复收藏待确认后全局等待不结束的问题：无法核实的商品在本次 App 进程内隔离，禁止再次自动收藏，可继续扫描其他商品；查看详情后返回会只读核验收藏，确认成功后更新结果且不重复计数。新增收藏尝试、点击、请求、回读和收尾诊断。保留 beta8 设置保存及此前修复；用户已反馈 beta9 在其原测试手机上运行正常，收藏可用；该反馈不代表所有设备、系统或商品路径均已验证。
 
-**当前测试版下载：[1.2.0-beta7 安装文件与校验清单](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta7)**
+**当前版本下载：[1.2.0-beta9 安装文件与校验清单](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta9)**
 
 | 使用环境 | 下载文件 |
 |---|---|
-| TrollFools 注入 | [dylib](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta7/ZZPicker-1.2.0-beta7-trollfools.dylib) / [zip](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta7/ZZPicker-1.2.0-beta7-trollfools.zip)，任选一种 |
-| 普通 Dopamine / rootless | [rootless.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta7/ZZPicker-1.2.0-beta7-rootless.deb) |
-| Dopamine RootHide | [roothide.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta7/ZZPicker-1.2.0-beta7-roothide.deb) |
-| 全部安装格式、文档与源码 | [完整合集](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta7/ZZPicker-1.2.0-beta7-release.zip) |
+| TrollFools 注入 | [dylib](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-trollfools.dylib) / [zip](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-trollfools.zip)，任选一种 |
+| 普通 Dopamine / rootless | [rootless.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-rootless.deb) |
+| Dopamine RootHide | [roothide.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-roothide.deb) |
+| 全部安装格式、文档与源码 | [完整合集](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-release.zip) |
 
-校验文件：[SHA256SUMS](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta7/SHA256SUMS)；合集另附 `.sha256` 文件。TrollFools 选择 dylib 或对应 zip，不能直接注入 deb。
+校验文件：[SHA256SUMS](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/SHA256SUMS)；合集另附 `.sha256` 文件。TrollFools 选择 dylib 或对应 zip，不能直接注入 deb。
 
 第二版的机型选择器、巨魔 / 越狱兼容性筛选与 iOS 范围联动在 [`v2-compatibility`](https://github.com/bingdilian/zz-picker/tree/v2-compatibility) 开发，尚未包含在本版，也没有第二版安装包。
 
 安装包位于 Release 的 **Assets**；GitHub 自动生成的 `Source code (zip)` 仅为源码，不能直接注入。请先移除旧注入，再安装对应的一种文件，并完全重开转转。本版为测试版，下方兼容范围与待验证项仍适用。
 
-适配基线为转转 **12.8.5**；动态库为 **arm64**，最低部署版本 **iOS 15.0**。这只是编译条件，实际安装还受注入工具、系统和 App 状态限制。平台换新电池等收藏二次确认尚未自动处理，不能视为两种收藏路径均已完整适配。当前仅有 iPhone 13 Pro Max / iOS 15.4.1 / TrollFools 的旧测试版部分流程证据，不能据此认定本版或所有环境兼容。
+适配基线为转转 **12.8.5**；动态库为 **arm64**，最低部署版本 **iOS 15.0**。这只是编译条件，实际安装还受注入工具、系统和 App 状态限制。平台换新电池等收藏二次确认尚未自动处理，不能视为两种收藏路径均已完整适配。已有 iPhone 13 Pro Max / iOS 15.4.1 / TrollFools 环境的历史记录，用户现已反馈 beta9 运行及收藏正常；其他环境仍需分别验证。
 
 - [安装、更新、卸载与使用](docs/public/install.md)
 - [兼容范围与已知限制](docs/public/compatibility.md)

@@ -35,7 +35,14 @@ static NSString *ZZResultStatus(NSString *status){return @{@"match":@"命中",@"
     (void)gesture;for(UIView *view=touch.view;view;view=view.superview)if([view isKindOfClass:UIControl.class])return NO;return YES;
 }
 - (BOOL)textFieldShouldReturn:(UITextField *)field {[field resignFirstResponder];return YES;}
-- (void)close {[self.view endEditing:YES];ZZDismissSettings(^{[ZZPicker.shared showTask];});}
+- (void)close {
+    [self dismissKeyboard];NSString *error=[ZZPicker.shared saveConfigurationDraft:self.draft];
+    if(!error){ZZDismissSettings(^{[ZZPicker.shared showTask];});return;}
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"设置尚未保存" message:error preferredStyle:UIAlertControllerStyleAlert];alert.view.tag=ZZPickerOwnViewTag;
+    [alert addAction:[UIAlertAction actionWithTitle:@"继续编辑" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"放弃修改" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action){(void)action;ZZDismissSettings(^{[ZZPicker.shared showTask];});}]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
 - (void)about {[self dismissKeyboard];[self.navigationController pushViewController:[(UIViewController *)[NSClassFromString(@"ZZAboutController")alloc]init]animated:YES];}
 - (void)acknowledgeHelp {[NSUserDefaults.standardUserDefaults setBool:YES forKey:@"com.codex.zzpicker.helpSeen"];self.tableView.tableHeaderView=nil;}
 - (void)updated:(NSNotification *)note {(void)note;for(UITextField *field in self.fields.allValues)if(field.isFirstResponder)return;[self.tableView reloadData];}
@@ -78,4 +85,4 @@ static NSString *ZZResultStatus(NSString *status){return @{@"match":@"命中",@"
 }
 - (void)startAllowUnverified:(BOOL)allow {NSString *error=[ZZPicker.shared startWithConfig:self.draft allowUnverified:allow];if(error){UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"检查设置" message:error preferredStyle:UIAlertControllerStyleAlert];alert.view.tag=ZZPickerOwnViewTag;[alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];[self presentViewController:alert animated:YES completion:nil];}}
 @end
-void ZZPresentSettings(void) {UIViewController *top=ZZTopController();if(!top||ZZSettingsVisible())return;ZZSettingsController *settings=[[ZZSettingsController alloc]initWithStyle:UITableViewStyleInsetGrouped];UINavigationController *navigation=[[UINavigationController alloc]initWithRootViewController:settings];navigation.view.tag=ZZPickerOwnViewTag;navigation.modalPresentationStyle=UIModalPresentationPageSheet;ZZSettingsNavigation=navigation;[top presentViewController:navigation animated:YES completion:nil];}
+void ZZPresentSettings(void) {UIViewController *top=ZZTopController();if(!top||ZZSettingsVisible())return;ZZSettingsController *settings=[[ZZSettingsController alloc]initWithStyle:UITableViewStyleInsetGrouped];UINavigationController *navigation=[[UINavigationController alloc]initWithRootViewController:settings];navigation.view.tag=ZZPickerOwnViewTag;navigation.modalPresentationStyle=UIModalPresentationPageSheet;navigation.modalInPresentation=YES;ZZSettingsNavigation=navigation;[top presentViewController:navigation animated:YES completion:nil];}

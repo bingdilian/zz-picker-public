@@ -131,3 +131,8 @@ test('report channel crosses the web bridge through params and paramBars without
  const e=environment(),x=new e.win.XMLHttpRequest();x.open('GET','https://app.zhuanzhuan.com/zzopen/waresshow/moreInfo?infoId='+fixture.id);x.responseType='json';x.send();x.response=raw;x.emit();
  const m=e.messages.find(m=>m.kind==='response');assert.equal(m.data.respData.report.params.find(p=>p.key==='购买渠道').value,'国行');assert.deepEqual(m.data.respData.report.reportParam.paramBars,[{paramName:'购买渠道',paramValue:'国行'}]);assert.equal(JSON.stringify(m).includes('private-'),false);
 });
+
+test('favorite request-start diagnostics are distinct from a DOM click and exclude unrelated parameters',async()=>{
+ const e=environment();await e.win.fetch('https://app.zhuanzhuan.com/zz/transfer/addLoveInfo?infoId='+fixture.id+'&token=private-marker');await settle();
+ const start=e.messages.find(m=>m.kind==='request');assert.equal(start.path,'/zz/transfer/addLoveInfo');assert.equal(start.id,fixture.id);assert.equal(JSON.stringify(e.messages).includes('private-marker'),false);
+});

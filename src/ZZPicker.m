@@ -16,6 +16,7 @@
 @property(nonatomic,copy) NSDictionary *config;
 @property(nonatomic,strong) NSMutableArray *mutableLogs;
 @property(nonatomic,strong) NSMutableArray *searchTrace;
+@property(nonatomic,strong) NSMutableArray *favoriteTrace;
 @property(nonatomic,strong) NSHashTable<WKWebView *> *webViews;
 @property(nonatomic,strong) NSDictionary *action;
 @property(nonatomic,strong) NSMutableDictionary *detailParts;
@@ -32,7 +33,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 + (instancetype)shared {static ZZPicker *p;static dispatch_once_t once;dispatch_once(&once,^{p=[ZZPicker new];});return p;}
 - (instancetype)init {
     if((self=[super init])){
-        _js=[JSContext new];_mutableLogs=[NSMutableArray new];_searchTrace=[NSMutableArray new];_webViews=[NSHashTable weakObjectsHashTable];_detailParts=[NSMutableDictionary new];
+        _js=[JSContext new];_mutableLogs=[NSMutableArray new];_searchTrace=[NSMutableArray new];_favoriteTrace=[NSMutableArray new];_webViews=[NSHashTable weakObjectsHashTable];_detailParts=[NSMutableDictionary new];
         __weak ZZPicker *weakSelf=self;_js.exceptionHandler=^(JSContext *context,JSValue *exception){(void)context;(void)exception;[weakSelf pause:@"规则执行异常，请导出诊断"];};
         _js[@"ZZNow"]=^double{return NSProcessInfo.processInfo.systemUptime*1000;};
         [_js evaluateScript:ZZSource(ZZCoreBytes,ZZCoreLength)];_mutations=[_js[@"ZZCore"][@"MutationGate"]constructWithArguments:@[]];
@@ -69,7 +70,16 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 - (NSString *)diagnosticsWithDetails:(BOOL)includeDetails {
     NSDictionary *snap=[[self.js[@"ZZCore"]invokeMethod:@"diagnosticSnapshot" withArguments:@[[self snapshot],@(includeDetails)]]toDictionary]?:@{};
     NSMutableDictionary *info=[[self environment]mutableCopy];[info addEntriesFromDictionary:@{@"includesProductDetails":@(includeDetails),@"snapshot":snap,@"searchUI":ZZSearchDiagnostics(),@"filterUI":self.filterDriver.diagnostics?:@{},@"searchTrace":[self.searchTrace copy],@"logs":self.logs}];
+    NSMutableArray *favorites=[NSMutableArray new];for(NSDictionary *entry in self.favoriteTrace){NSMutableDictionary *copy=[entry mutableCopy];if(!includeDetails)[copy removeObjectForKey:@"id"];[favorites addObject:copy];}info[@"favoriteTrace"]=favorites;
     return [[NSString alloc]initWithData:[NSJSONSerialization dataWithJSONObject:info options:NSJSONWritingPrettyPrinted error:nil]encoding:NSUTF8StringEncoding]?:@"诊断编码失败";
+}
+- (void)favoriteEvent:(NSString *)event id:(NSString *)ident value:(id)value {
+    [self.favoriteTrace addObject:@{@"event":event,@"id":ident?:@"",@"value":value?:NSNull.null,@"phase":[self snapshot][@"phase"]?:@"",@"time":@(NSDate.date.timeIntervalSince1970)}];if(self.favoriteTrace.count>40)[self.favoriteTrace removeObjectAtIndex:0];
+}
+- (void)settleFavorite {
+    NSDictionary *s=[self snapshot];id hit=s[@"hit"],current=s[@"current"];NSString *status=[hit isKindOfClass:NSDictionary.class]?hit[@"status"]:nil;BOOL pending=[[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool];
+    if([@[@"favoriteUnknown",@"favorited",@"already"]containsObject:status]&&[s[@"phase"]isEqual:@"hit"]){NSString *ident=hit[@"id"];if(pending||(![status isEqual:@"favoriteUnknown"]&&[[self.mutations invokeMethod:@"blocked" withArguments:@[ident]]toBool])){BOOL confirmed=![status isEqual:@"favoriteUnknown"];if([[self.mutations invokeMethod:@"settle" withArguments:@[ident,s[@"token"],@(confirmed)]]toBool])[self favoriteEvent:@"settled" id:ident value:confirmed?@"collected":@"quarantined"];}}
+    else if(pending&&[s[@"state"]isEqual:@"stopped"]&&[current isKindOfClass:NSDictionary.class]){if([[self.mutations invokeMethod:@"settle" withArguments:@[current[@"id"],s[@"token"],@NO]]toBool])[self favoriteEvent:@"settled" id:current[@"id"] value:@"quarantinedOnStop"];}
 }
 - (void)install {
     [self log:[NSString stringWithFormat:@"插件%@已加载：%s；隐藏采集模式",ZZPickerVersion,ZZ_VARIANT]];
@@ -109,25 +119,31 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 - (NSString *)startWithConfig:(NSDictionary *)config {
     return [self startWithConfig:config allowUnverified:NO];
 }
+- (NSString *)saveConfigurationDraft:(NSDictionary *)draft {
+    NSDictionary *checked=[[self.js[@"ZZCore"]invokeMethod:@"validateConfig" withArguments:@[draft]]toDictionary];
+    if(![checked[@"ok"]boolValue])return [checked[@"errors"]componentsJoinedByString:@"；"]?:@"配置无效";
+    self.config=checked[@"config"];[NSUserDefaults.standardUserDefaults setObject:self.config forKey:@"com.codex.zzpicker.config.v2"];
+    return nil;
+}
 - (NSString *)startWithConfig:(NSDictionary *)config allowUnverified:(BOOL)allow {
     if(!self.enabled)return @"插件已停用，请先打开“启用插件”";
     if(![self.environment[@"verifiedAppVersion"]boolValue]&&!allow)return @"当前转转版本尚未验证，请先查看版本说明并确认仅本次测试";
     if([[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool])return @"上一笔收藏仍在处理中，请先等待结果或重开转转核对收藏";
-    NSDictionary *checked=[[self.js[@"ZZCore"]invokeMethod:@"validateConfig" withArguments:@[config]]toDictionary];if(![checked[@"ok"]boolValue])return [checked[@"errors"]componentsJoinedByString:@"；"]?:@"配置无效";
-    if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];ZZStopCollector();self.config=checked[@"config"];[NSUserDefaults.standardUserDefaults setObject:self.config forKey:@"com.codex.zzpicker.config.v2"];
+    NSString *error=[self saveConfigurationDraft:config];if(error)return error;
+    if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];ZZStopCollector();
     self.run=[self.js[@"ZZCore"][@"Run"]constructWithArguments:@[self.config]];[self.run invokeMethod:@"start" withArguments:@[]];self.searchController=nil;[self.detailParts removeAllObjects];[self.searchTrace removeAllObjects];ZZResetPagination(0);
     JSValue *started=self.run;[self log:[NSString stringWithFormat:@"从%@开始新任务；等待实际筛选请求确认",ZZSearchSurface()]];
     ZZDismissSettings(^{if(self.run==started&&[[self snapshot][@"state"]isEqual:@"search"]){[self attachEntry];[self pump];[self showTask];}});return nil;
 }
 - (void)pause:(NSString *)reason {if(!self.run)return;[self.run invokeMethod:@"pause" withArguments:@[reason]];@synchronized(self){self.action=nil;}[self prepareAllWebViews];[self log:reason];}
 - (void)resume {if(!self.enabled||!self.run||ZZViewerVisible())return;[self.run invokeMethod:@"resume" withArguments:@[]];[self pump];[self showTask];}
-- (void)stop {if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];@synchronized(self){self.action=nil;}[self prepareAllWebViews];ZZStopCollector();[self log:@"任务已结束，结果与已完成收藏已保留"];[self showTask];}
+- (void)stop {if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];[self settleFavorite];@synchronized(self){self.action=nil;}[self prepareAllWebViews];ZZStopCollector();[self log:@"任务已结束，结果与已完成收藏已保留"];[self showTask];}
 - (void)viewMatched {
     NSDictionary *hit=[self snapshot][@"hit"],*item=hit[@"item"];if(!item)return;
     BOOL safe=[[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[item[@"jumpUrl"]?:@"",item[@"id"]?:@""]]toBool];
     if(safe&&[[self.run invokeMethod:@"beginViewing" withArguments:@[]]toBool]){ZZShowMatchedProduct(item);[self attachEntry];[self changed];}
 }
-- (void)returnedFromDetails {[self.run invokeMethod:@"viewed" withArguments:@[]];[self attachEntry];[self changed];[self showTask];}
+- (void)returnedFromDetails {[self.run invokeMethod:@"viewed" withArguments:@[]];if([[self.run invokeMethod:@"recheckFavorite" withArguments:@[]]toBool]){[self favoriteEvent:@"manualReturnReadback" id:[self snapshot][@"current"][@"id"] value:nil];[self pump];}[self attachEntry];[self changed];[self showTask];}
 - (NSDictionary *)context {@synchronized(self){if(!self.action)return @{};return @{@"token":self.action[@"token"],@"id":self.action[@"id"]?:self.action[@"item"][@"id"]?:@"",@"allowFavorite":@([self.action[@"type"]isEqual:@"favorite"]),@"filterCommit":(self.filterDriver.willCommit||self.filterDriver.complete)?@YES:@NO};}}
 - (void)checkTaskBudget {
     if(!self.run)return;BOOL exceeded=[[self snapshot][@"budgetExceeded"]boolValue];
@@ -140,7 +156,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if(![@[@"/zz/transfer/search",@"/zz/v2/zzsearchfilteritem/getStockCount",@"/zz/v2/zzsearchfilteritem/getFilterItemDTO"]containsObject:metadata[@"path"]?:@""])return;
     // Whitelist the two public filter groups; never retain request headers or unrelated body fields.
     NSDictionary *selection=nil;id raw=metadata[@"selection"];if([raw isKindOfClass:NSDictionary.class]){NSData *bytes=[NSJSONSerialization dataWithJSONObject:@{@"clickItems":raw} options:0 error:nil];if(bytes)selection=ZZSearchSelection([[NSString alloc]initWithData:bytes encoding:NSUTF8StringEncoding]);}
-    NSMutableDictionary *entry=[@{@"time":@(NSDate.date.timeIntervalSince1970),@"event":event,@"path":metadata[@"path"]?:@"",@"keywordMatches":@([metadata[@"keyword"]isEqual:self.config[@"model"]]),@"page":[metadata[@"page"]isKindOfClass:NSString.class]||[metadata[@"page"]isKindOfClass:NSNumber.class]?metadata[@"page"]:@0,@"filterCommit":@([metadata[@"filterCommit"]boolValue]),@"selection":selection?:NSNull.null,@"filterUI":self.filterDriver.diagnostics?:@{},@"state":[self snapshot][@"state"]?:@"idle"}mutableCopy];
+    NSMutableDictionary *entry=[@{@"time":@(NSDate.date.timeIntervalSince1970),@"event":event,@"path":metadata[@"path"]?:@"",@"keywordMatches":@([metadata[@"keyword"]isEqual:[self snapshot][@"config"][@"model"]]),@"page":[metadata[@"page"]isKindOfClass:NSString.class]||[metadata[@"page"]isKindOfClass:NSNumber.class]?metadata[@"page"]:@0,@"filterCommit":@([metadata[@"filterCommit"]boolValue]),@"selection":selection?:NSNull.null,@"filterUI":self.filterDriver.diagnostics?:@{},@"state":[self snapshot][@"state"]?:@"idle"}mutableCopy];
     if(json){id infos=[json[@"respData"]isKindOfClass:NSDictionary.class]?json[@"respData"][@"infos"]:nil;entry[@"itemCount"]=[infos isKindOfClass:NSArray.class]?@([infos count]):@0;entry[@"responseOK"]=@([[json[@"respCode"]description]isEqual:@"0"]);}
     [self.searchTrace addObject:entry];if(self.searchTrace.count>40)[self.searchTrace removeObjectAtIndex:0];
 }
@@ -153,7 +169,8 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 - (void)observeRequest:(NSDictionary *)m {
     if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{[self observeRequest:m];});return;}
     [self traceSearch:m event:@"requestStarted" response:nil];
-    if(![m[@"path"]isEqual:@"/zz/transfer/search"]||![m[@"keyword"]isEqual:self.config[@"model"]]||!self.action||![self isCurrent:self.action])return;
+    if([m[@"path"]isEqual:@"/zz/transfer/addLoveInfo"])[self favoriteEvent:@"requestStarted" id:m[@"id"] value:nil];
+    if(![m[@"path"]isEqual:@"/zz/transfer/search"]||![m[@"keyword"]isEqual:[self snapshot][@"config"][@"model"]]||!self.action||![self isCurrent:self.action])return;
     [self.run invokeMethod:@"searchStarted" withArguments:@[m[@"page"]?:@0,m[@"token"]?:@{}]];
     if(self.pageWait&&!self.pageWait[@"requestSeen"].toBool&&[[self.pageWait invokeMethod:@"requestStarted" withArguments:@[m[@"page"]?:@0,m[@"token"]?:@{}]]toBool])[self log:[NSString stringWithFormat:@"第%@页请求已启动，等待返回",m[@"page"]]];
 }
@@ -161,6 +178,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{[self observeFailure:m];});return;}
     if(![m[@"token"]isKindOfClass:NSDictionary.class])return;
     [self traceSearch:m event:@"requestFailed" response:nil];
+    if([m[@"path"]isEqual:@"/zz/transfer/addLoveInfo"])[self favoriteEvent:@"requestFailed" id:m[@"id"] value:nil];
     if([m[@"path"]isEqual:@"/zz/v2/zzsearchfilteritem/getStockCount"])return;
     if([m[@"path"]isEqual:@"/zz/transfer/search"]){if([[self.run invokeMethod:@"searchFailed" withArguments:@[m[@"page"]?:@0,m[@"token"]]]toBool]){[self pump];[self changed];}return;}
     NSDictionary *a=self.action;if(![a[@"token"]isEqual:m[@"token"]]||![self isCurrent:a])return;
@@ -170,9 +188,11 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{[self observeJSON:json metadata:m webView:web];});return;}
     if(![json isKindOfClass:NSDictionary.class]||![m[@"token"]isKindOfClass:NSDictionary.class])return;NSString *path=m[@"path"];
     [self traceSearch:m event:@"responseReceived" response:json];
+    if([path isEqual:@"/zz/transfer/addLoveInfo"]){NSString *code=[json[@"respCode"]description];BOOL numeric=code.length&&code.length<=12&&[code rangeOfCharacterFromSet:NSCharacterSet.decimalDigitCharacterSet.invertedSet].location==NSNotFound;[self favoriteEvent:@"responseReceived" id:m[@"id"] value:numeric?code:@"unknownCode"];}
+    if([path isEqual:@"/zzopen/waresshow/baseInfo"]&&[[self snapshot][@"phase"]isEqual:@"verify"]){id value=[[self.js[@"ZZCore"]invokeMethod:@"collectedState" withArguments:@[json]]toObject];[self favoriteEvent:@"readback" id:m[@"id"] value:[value isKindOfClass:NSNumber.class]?value:NSNull.null];}
     if([path isEqual:@"/zz/transfer/addLoveInfo"]&&[[self.mutations invokeMethod:@"complete" withArguments:@[m[@"id"]?:@"",m[@"token"]]]toBool])[self changed];
     if([[self snapshot][@"state"]isEqual:@"stopped"]){[self.run invokeMethod:@"settleStopped" withArguments:@[path.lastPathComponent,json,m[@"id"]?:@"",m[@"token"]]];[self changed];return;}
-    if([path isEqual:@"/zz/transfer/search"]&&[m[@"keyword"]isEqual:self.config[@"model"]]){
+    if([path isEqual:@"/zz/transfer/search"]&&[m[@"keyword"]isEqual:[self snapshot][@"config"][@"model"]]){
         NSDictionary *s=[self snapshot];NSUInteger page=[m[@"page"]integerValue];
         if([s[@"phase"]isEqual:@"filters"]&&self.filterDriver&&!self.filterDriver.complete){if([m[@"filterCommit"]boolValue]&&[s[@"token"]isEqual:m[@"token"]])self.pendingFilterResponse=@{@"json":json,@"metadata":m};return;}
         if(page>[s[@"page"]unsignedIntegerValue])[self.run invokeMethod:@"prefetch" withArguments:@[json,@(page),m[@"token"],m[@"selection"]?:NSNull.null]];
@@ -182,7 +202,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     }
     if([path isEqual:@"/zz/v2/zzsearchfilteritem/getFilterItemDTO"]){if([m[@"token"][@"run"]isEqual:[self snapshot][@"token"][@"run"]])[self.run invokeMethod:@"updateOptions" withArguments:@[json]];return;}
     NSDictionary *snapshot=[self snapshot];
-    if([snapshot[@"current"][@"id"]isEqual:m[@"id"]]){
+    if([snapshot[@"current"]isKindOfClass:NSDictionary.class]&&[snapshot[@"current"][@"id"]isEqual:m[@"id"]]){
         if([path isEqual:@"/zz/transfer/addLoveInfo"]&&[[self.run invokeMethod:@"favoriteResult" withArguments:@[json,m[@"token"]]]toBool]){[self pump];return;}
         if([path isEqual:@"/zzopen/waresshow/baseInfo"]&&[snapshot[@"phase"]isEqual:@"verify"]){id value=[[self.js[@"ZZCore"]invokeMethod:@"collectedState" withArguments:@[json]]toObject]?:NSNull.null;if([[self.run invokeMethod:@"verified" withArguments:@[value,m[@"token"]]]toBool]){[self pump];return;}}
     }
@@ -194,10 +214,11 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     }
 }
 - (void)pump {
+    [self settleFavorite];
     NSDictionary *next=[[self.run invokeMethod:@"next" withArguments:@[]]toDictionary];@synchronized(self){self.action=next;}
     if(!next){[self prepareAllWebViews];NSString *state=[self snapshot][@"state"];if([@[@"stopped",@"finished"]containsObject:state]||([state isEqual:@"hit"]&&![[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool]))ZZStopCollector();[self changed];return;}
     self.uiAttempts=0;NSString *type=next[@"type"];self.pendingFilterResponse=nil;
-    self.filterDriver=[type isEqual:@"filters"]?[[ZZFilterDriver alloc]initWithConfig:self.config fields:next[@"applyFields"]?:@[@"capacities",@"conditions"]]:nil;
+    self.filterDriver=[type isEqual:@"filters"]?[[ZZFilterDriver alloc]initWithConfig:[self snapshot][@"config"] fields:next[@"applyFields"]?:@[@"capacities",@"conditions"]]:nil;
     self.pageWait=[type isEqual:@"nextPage"]?[self.js[@"ZZCore"][@"PageWait"]constructWithArguments:@[next[@"token"],next[@"page"],@(NSProcessInfo.processInfo.systemUptime*1000)]]:nil;
     if([type isEqual:@"nextPage"])ZZResetPagination([next[@"page"]unsignedIntegerValue]);
     if(self.pageWait&&[[self snapshot][@"waitingResponse"]boolValue])[self.pageWait invokeMethod:@"requestStarted" withArguments:@[next[@"page"],next[@"token"]]];
@@ -207,7 +228,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,seconds*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(![self isCurrent:next]||[type isEqual:@"nextPage"])return;
         NSString *reason=[type isEqual:@"open"]?@"隐藏采集超时，未弹出详情；请导出诊断":@"等待页面或接口超时，请查看诊断";
         if([type isEqual:@"filters"]){NSDictionary *d=self.filterDriver.diagnostics;reason=self.filterDriver.complete?@"筛选界面操作已完成，但未收到可确认的搜索响应，请导出诊断":[NSString stringWithFormat:@"筛选未完成：%@／%@；请导出诊断",d[@"field"]?:@"",d[@"stageName"]?:@""];}
-        [self.run invokeMethod:@"failed" withArguments:@[reason,next[@"token"]]];[self log:reason];[self pump];});
+        if([@[@"favorite",@"verify"]containsObject:type])[self favoriteEvent:@"timeout" id:next[@"id"] value:type];[self.run invokeMethod:@"failed" withArguments:@[reason,next[@"token"]]];[self log:reason];[self pump];});
 }
 - (void)drive:(NSDictionary *)a {
     [self checkTaskBudget];
@@ -225,12 +246,13 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
         }
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,1200*NSEC_PER_MSEC),dispatch_get_main_queue(),^{if([self isCurrent:a])[self drive:a];});
     }
-    else if([type isEqual:@"favorite"]){if(!self.detailWeb){[self pause:@"隐藏收藏页面未建立"];return;}if(![[self.mutations invokeMethod:@"begin" withArguments:@[a[@"id"],a[@"token"]]]toBool]){[self pause:@"上一笔收藏尚未返回，已暂停"];return;}
+    else if([type isEqual:@"favorite"]){if(!self.detailWeb){[self pause:@"隐藏收藏页面未建立"];return;}if([[self.mutations invokeMethod:@"blocked" withArguments:@[a[@"id"]]]toBool]){[self favoriteEvent:@"quarantinedReadOnly" id:a[@"id"] value:nil];[self.run invokeMethod:@"failed" withArguments:@[@"该商品上次收藏待确认，仅重新核验，不重复收藏",a[@"token"]]];[self pump];return;}if(![[self.mutations invokeMethod:@"begin" withArguments:@[a[@"id"],a[@"token"]]]toBool]){[self pause:@"上一笔收藏尚未返回，已暂停"];return;}[self favoriteEvent:@"attempt" id:a[@"id"] value:nil];
         [self.detailWeb evaluateJavaScript:[NSString stringWithFormat:@"window.ZZWeb?window.ZZWeb.favorite(%@):({ok:false,reason:'收藏桥接未建立'})",[self jsonString:a[@"id"]]] completionHandler:^(id result,NSError *error){
             BOOL refused=!error&&[result isKindOfClass:NSDictionary.class]&&[result[@"ok"]isEqual:@NO];if(refused)[self.mutations invokeMethod:@"complete" withArguments:@[a[@"id"],a[@"token"]]];
+            NSArray *reasons=@[@"未识别到收藏入口",@"收藏入口不唯一",@"未确认商品当前未收藏",@"商品或任务不匹配",@"本页已发起收藏，等待确认",@"收藏桥接未建立",@"页面地址无效"];id reason=[result isKindOfClass:NSDictionary.class]?result[@"reason"]:nil;[self favoriteEvent:error?@"scriptError":refused?@"clickRefused":@"clickAccepted" id:a[@"id"] value:error?@(error.code):refused?([reasons containsObject:reason]?reason:@"unknownRefusal"):nil];
             if(![self isCurrent:a])return;if(error||refused||![result isKindOfClass:NSDictionary.class]){[self.run invokeMethod:@"failed" withArguments:@[@"收藏入口未确认，改为读取状态",a[@"token"]]];[self pump];}
         }];
-    }else if([type isEqual:@"verify"]){if(!ZZLoadCollector(@{},YES)){[self.run invokeMethod:@"verified" withArguments:@[NSNull.null,a[@"token"]]];[self pump];}}
+    }else if([type isEqual:@"verify"]){BOOL fresh=[a[@"item"]isKindOfClass:NSDictionary.class];BOOL safe=!fresh||[[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[a[@"item"][@"jumpUrl"]?:@"",a[@"id"]]]toBool];if(!safe||!ZZLoadCollector(fresh?a[@"item"]:@{},!fresh)){[self.run invokeMethod:@"verified" withArguments:@[NSNull.null,a[@"token"]]];[self pump];}}
     else if([type isEqual:@"back"]){[self.detailWeb stopLoading];[self.run invokeMethod:@"returned" withArguments:@[a[@"token"]]];[self pump];}
 }
 - (NSString *)jsonString:(id)value {return [[NSString alloc]initWithData:[NSJSONSerialization dataWithJSONObject:value?:NSNull.null options:NSJSONWritingFragmentsAllowed error:nil]encoding:NSUTF8StringEncoding]?:@"null";}

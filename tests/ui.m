@@ -8,6 +8,8 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
 - (NSString *)diagnosticsWithDetails:(BOOL)includeDetails;
 - (NSString *)startWithConfig:(NSDictionary *)config allowUnverified:(BOOL)allow;
 - (void)checkTaskBudget;
+- (void)pump;
+- (NSString *)saveConfigurationDraft:(NSDictionary *)draft;
 @end
 @interface ZZLabelViewButton : UIView @end
 @implementation ZZLabelViewButton @end
@@ -142,6 +144,15 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         [picker observeJSON:@{@"respCode":@0} metadata:@{@"path":@"/zz/transfer/addLoveInfo",@"id":@"123",@"token":token} webView:nil];
         CHECK(![[gate invokeMethod:@"pending" withArguments:@[]]toBool],@"late favorite response did not release gate");
         CHECK(updates>0,@"gate release did not notify task panel");[[NSNotificationCenter defaultCenter]removeObserver:observer];
+        JSValue *settlementRun=[js evaluateScript:@"(function(){var r=new ZZCore.Run({model:'iPhone 15 Pro Max',autoFavorite:true});r.start();r.current={id:'123',title:'商品'};r.currentProduct={id:'123',title:'商品',ios:'17.0'};r._issue('favorite',{id:'123'});return r;})()"];
+        [picker setValue:settlementRun forKey:@"run"];NSDictionary *favoriteAction=[[settlementRun invokeMethod:@"next" withArguments:@[]]toDictionary];[picker setValue:favoriteAction forKey:@"action"];[gate invokeMethod:@"begin" withArguments:@[@"123",favoriteAction[@"token"]]];
+        [settlementRun invokeMethod:@"failed" withArguments:@[@"timeout",favoriteAction[@"token"]]];NSDictionary *verifyAction=[[settlementRun invokeMethod:@"next" withArguments:@[]]toDictionary];[settlementRun invokeMethod:@"verified" withArguments:@[NSNull.null,verifyAction[@"token"]]];[picker pump];
+        CHECK(![[gate invokeMethod:@"pending" withArguments:@[]]toBool],@"terminal unknown favorite left the process-wide wait stuck");
+        [picker returnedFromDetails];CHECK([[picker snapshot][@"phase"]isEqual:@"verify"]&&![[picker context][@"allowFavorite"]boolValue],@"returning from manual favorite did not perform read-only verification");
+        NSDictionary *manualToken=[picker snapshot][@"token"];[picker observeJSON:@{@"respCode":@0,@"respData":@{@"collected":@YES}} metadata:@{@"path":@"/zzopen/waresshow/baseInfo",@"id":@"123",@"token":manualToken} webView:nil];
+        CHECK([[picker snapshot][@"counts"][@"favorited"]integerValue]==1&&[[picker snapshot][@"counts"][@"favoriteUnknown"]integerValue]==0&&![[gate invokeMethod:@"pending" withArguments:@[]]toBool],@"manual favorite readback did not reconcile counts and settle the gate");
+        NSDictionary *plainFavorite=[NSJSONSerialization JSONObjectWithData:[[picker diagnostics]dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil],*detailedFavorite=[NSJSONSerialization JSONObjectWithData:[[picker diagnosticsWithDetails:YES]dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil];BOOL privateIDs=NO;for(NSDictionary *entry in plainFavorite[@"favoriteTrace"])if(entry[@"id"])privateIDs=YES;CHECK([plainFavorite[@"favoriteTrace"]count]>0&&!privateIDs&&[detailedFavorite[@"favoriteTrace"]lastObject][@"id"]!=nil,@"favorite diagnostics failed to hide product IDs unless explicitly included");
+        [picker setValue:run forKey:@"run"];
         [run invokeMethod:@"start" withArguments:@[]];[js evaluateScript:@"testRun.state=testRun.phase='verify';testRun.current={id:'123',title:'商品'};testRun.currentProduct={id:'123',title:'商品',ios:'17.0'};testRun.intent={type:'verify',id:'123',token:{run:testRun.run,step:testRun.step}};"];
         token=[picker snapshot][@"token"];[picker pause:@"等待结束确认"];
         [picker observeJSON:@{@"respCode":@0,@"respData":@{@"collected":@YES}} metadata:@{@"path":@"/zzopen/waresshow/baseInfo",@"id":@"123",@"token":token} webView:nil];
@@ -243,6 +254,32 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         }
         [renderSettings.tableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:6] atScrollPosition:UITableViewScrollPositionBottom animated:NO];[renderSettings.tableView layoutIfNeeded];[self saveScreenshot:@"ui-settings-bottom.png"];
         if(previewClass){self.window.rootViewController=[[UINavigationController alloc]initWithRootViewController:[(UIViewController *)[previewClass alloc]init]];[self.window layoutIfNeeded];[self saveScreenshot:@"ui-diagnostic-preview.png"];}
+        NSDictionary *beforeSaveConfig=picker.config,*beforeSaveDefaults=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v2"];JSValue *beforeSaveRun=[picker valueForKey:@"run"];NSDictionary *beforeRunConfig=[picker snapshot][@"config"];id beforeSaveAction=[picker valueForKey:@"action"];
+        [picker setValue:migrated.config forKey:@"config"];
+        for(NSNumber *enabled in @[@YES,@NO]){
+            UITableViewController *editor=[(UITableViewController *)[NSClassFromString(@"ZZSettingsController")alloc]initWithStyle:UITableViewStyleInsetGrouped];[editor loadViewIfNeeded];
+            UITableViewCell *cell=[editor.tableView.dataSource tableView:editor.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:4]];UISwitch *toggle=(id)cell.accessoryView;toggle.on=enabled.boolValue;[toggle sendActionsForControlEvents:UIControlEventValueChanged];
+            for(NSArray *input in @[@[@0,@0,@"iPhone 16 Pro"],@[@0,@1,@"17.0"],@[@0,@2,@"17.3.1"],@[@5,@0,@"25"],@[@5,@1,@"3"]]){cell=[editor.tableView.dataSource tableView:editor.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:[input[1]integerValue] inSection:[input[0]integerValue]]];UITextField *field=(id)cell.accessoryView;field.text=input[2];[field sendActionsForControlEvents:UIControlEventEditingChanged];}
+            UIBarButtonItem *close=editor.navigationItem.rightBarButtonItem;[UIApplication.sharedApplication sendAction:close.action to:close.target from:close forEvent:nil];
+            CHECK([picker.config[@"autoFavorite"]boolValue]==enabled.boolValue&&[[[ZZPicker new]config][@"autoFavorite"]boolValue]==enabled.boolValue,@"closing settings did not persist the auto-favorite choice");
+            UITableViewController *reopened=[(UITableViewController *)[NSClassFromString(@"ZZSettingsController")alloc]initWithStyle:UITableViewStyleInsetGrouped];[reopened loadViewIfNeeded];cell=[reopened.tableView.dataSource tableView:reopened.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:1 inSection:4]];
+            CHECK(((UISwitch *)cell.accessoryView).on==enabled.boolValue,@"reopening settings lost the auto-favorite choice");
+            NSDictionary *reloaded=[[ZZPicker new]config];CHECK([reloaded[@"model"]isEqual:@"iPhone 16 Pro"]&&[reloaded[@"minIOS"]isEqual:@"17.0"]&&[reloaded[@"maxIOS"]isEqual:@"17.3.1"]&&[reloaded[@"maxProducts"]integerValue]==25&&[reloaded[@"maxMinutes"]integerValue]==3,@"closing settings did not save the other edited fields");
+        }
+        CHECK([picker valueForKey:@"run"]==beforeSaveRun&&[[picker snapshot][@"config"]isEqual:beforeRunConfig]&&[picker valueForKey:@"action"]==beforeSaveAction,@"saving settings restarted or changed the existing task");
+        JSValue *originalCriteriaRun=[js[@"ZZCore"][@"Run"]constructWithArguments:@[migrated.config]];[picker setValue:originalCriteriaRun forKey:@"run"];[originalCriteriaRun invokeMethod:@"start" withArguments:@[]];NSDictionary *originalSearch=[[originalCriteriaRun invokeMethod:@"next" withArguments:@[]]toDictionary];[picker setValue:originalSearch forKey:@"action"];
+        NSDictionary *originalRequest=@{@"path":@"/zz/transfer/search",@"keyword":@"iPhone 15 Pro Max",@"page":@1,@"token":originalSearch[@"token"]};[picker observeRequest:originalRequest];CHECK([[picker snapshot][@"waitingResponse"]boolValue],@"saved model replaced the existing task's search keyword");
+        [picker observeJSON:@{@"respCode":@403} metadata:originalRequest webView:nil];CHECK([[picker snapshot][@"state"]isEqual:@"paused"],@"existing task ignored its own search response after settings changed");
+        [picker showTask];CHECK([((UILabel *)FindTestView(panel,@"taskCriteria")).text containsString:@"iOS 18–27"],@"task panel displayed newly saved criteria for an older task");ZZHideTaskPanel();[picker setValue:beforeSaveRun forKey:@"run"];[picker setValue:beforeSaveAction forKey:@"action"];
+        if([picker respondsToSelector:@selector(saveConfigurationDraft:)]){
+            NSDictionary *valid=picker.config,*stored=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v2"];NSMutableDictionary *invalid=[valid mutableCopy];invalid[@"minIOS"]=@"27";invalid[@"maxIOS"]=@"17";invalid[@"autoFavorite"]=@YES;
+            CHECK([picker saveConfigurationDraft:invalid].length>0&&[picker.config isEqual:valid]&&[[defaults dictionaryForKey:@"com.codex.zzpicker.config.v2"]isEqual:stored],@"invalid draft overwrote the last valid settings");
+            [UIView setAnimationsEnabled:NO];UITableViewController *invalidEditor=[(UITableViewController *)[NSClassFromString(@"ZZSettingsController")alloc]initWithStyle:UITableViewStyleInsetGrouped];self.window.rootViewController=[[UINavigationController alloc]initWithRootViewController:invalidEditor];[invalidEditor loadViewIfNeeded];[invalidEditor setValue:invalid forKey:@"draft"];UIBarButtonItem *close=invalidEditor.navigationItem.rightBarButtonItem;[UIApplication.sharedApplication sendAction:close.action to:close.target from:close forEvent:nil];
+            UIAlertController *alert=[invalidEditor.presentedViewController isKindOfClass:UIAlertController.class]?(id)invalidEditor.presentedViewController:nil;BOOL canEdit=NO,canDiscard=NO;for(UIAlertAction *choice in alert.actions){if(choice.style==UIAlertActionStyleCancel)canEdit=YES;if(choice.style==UIAlertActionStyleDestructive)canDiscard=YES;}
+            CHECK(alert&&canEdit&&canDiscard&&[picker.config isEqual:valid]&&[[defaults dictionaryForKey:@"com.codex.zzpicker.config.v2"]isEqual:stored],@"invalid close did not offer editing or discard while preserving saved settings");[self saveScreenshot:@"ui-settings-invalid-save.png"];[invalidEditor dismissViewControllerAnimated:NO completion:nil];[UIView setAnimationsEnabled:YES];self.window.rootViewController=UIViewController.new;
+        }else CHECK(NO,@"settings cannot be saved independently of starting a task");
+        [picker setValue:beforeSaveConfig forKey:@"config"];if(beforeSaveDefaults)[defaults setObject:beforeSaveDefaults forKey:@"com.codex.zzpicker.config.v2"];else[defaults removeObjectForKey:@"com.codex.zzpicker.config.v2"];
+        [UIView setAnimationsEnabled:NO];ZZPresentSettings();UINavigationController *sheet=(id)self.window.rootViewController.presentedViewController;CHECK([sheet isKindOfClass:UINavigationController.class]&&sheet.modalInPresentation,@"swipe dismissal can bypass settings validation and saving");ZZDismissSettings(^{ });[UIView setAnimationsEnabled:YES];
         NSString *positionKey=@"com.codex.zzpicker.entryPosition";id savedPosition=[defaults objectForKey:positionKey];[defaults removeObjectForKey:positionKey];ZZPicker *entryPicker=[ZZPicker new];[entryPicker install];UIButton *entryButton=[entryPicker valueForKey:@"entryButton"];
         BOOL hasEntryPan=NO;for(UIGestureRecognizer *gesture in entryButton.gestureRecognizers)if([gesture isKindOfClass:UIPanGestureRecognizer.class])hasEntryPan=YES;CHECK(hasEntryPan,@"settings entry has no drag gesture");
         if([entryPicker respondsToSelector:@selector(entryDragged:)]){

@@ -5,7 +5,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 #define ZZPickerOwnViewTag 0x5A5A5001
-#define ZZPickerVersion @"1.2.0-beta7"
+#define ZZPickerVersion @"1.2.0-beta9"
 
 @interface ZZPicker : NSObject <WKScriptMessageHandler>
 + (instancetype)shared;
@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSDictionary *)presentation;
 - (nullable NSString *)normalizedCapacity:(NSString *)label;
 - (NSArray<NSString *> *)purchaseChannels;
+- (nullable NSString *)saveConfigurationDraft:(NSDictionary *)draft;
 - (nullable NSString *)startWithConfig:(NSDictionary *)config;
 - (nullable NSString *)startWithConfig:(NSDictionary *)config allowUnverified:(BOOL)allow;
 - (void)setEnabled:(BOOL)enabled;

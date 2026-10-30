@@ -137,3 +137,14 @@ test('rejection reasons follow iOS then channel then capacity then appearance',(
  const p=product();p.ios='17.0';p.channel='美版';p.capacity='256';p.condition='8成新';
  assert.deepEqual(C.matchProduct(p,config()).reasons,['系统版本超出范围','购买渠道不符','容量不符','成色不符']);
 });
+
+test('settled uncertain favorites release the global wait but quarantine only that product',()=>{
+ const g=new C.MutationGate(),t={run:'r',step:3};g.begin(f.id,t);
+ assert.equal(g.settle(f.id,{run:'other',step:4},true),false);assert.equal(g.settle(f.id,{run:'r'},true),false);assert.equal(g.settle(f.id,{run:'r',step:2},true),false);
+ assert.equal(g.settle(f.id,{run:'r',step:4},false),true);assert.equal(g.pending(),false);
+ assert.equal(g.blocked(f.id),true);assert.equal(g.begin(f.id,{run:'new',step:1}),false);
+ assert.equal(g.begin('999',{run:'new',step:1}),true);assert.equal(g.complete(f.id,t),false);assert.equal(g.pending(),true);
+ assert.equal(g.settle(f.id,{run:'r',step:5},true),false);g.complete('999',{run:'new',step:1});
+ assert.equal(g.settle(f.id,{run:'r',step:6},true),true);assert.equal(g.blocked(f.id),false);
+ assert.equal(g.begin(f.id,{run:'new',step:2}),true);
+});

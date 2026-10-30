@@ -37,7 +37,7 @@
   }catch(e){return null;}
  }
  function failed(info){if(info){var m=copy(info);m.kind='failure';post(m);}}
- function started(info){if(info&&info.path==='/zz/transfer/search'){var m=copy(info);m.kind='request';post(m);}}
+ function started(info){if(info&&(info.path==='/zz/transfer/search'||info.path==='/zz/transfer/addLoveInfo')){var m=copy(info);m.kind='request';post(m);}}
  function observe(info,j){
   if(!info)return;
   if(!j||typeof j!=='object'){failed(info);return;}
