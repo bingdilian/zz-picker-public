@@ -8,7 +8,7 @@ beta9 修复收藏待确认后全局等待无法结束的问题，并增加详�
 
 目前实机证据仅来自旧版 test5：iPhone 13 Pro Max / iOS 15.4.1 / TrollFools，最终搜索确认 512G + 99新，加载 20 件、处理 4 件、排除 3 件、命中 1 件，自动收藏关闭，随后结束任务。购买渠道筛选、连续翻页、自动收藏回读及 rootless / RootHide 加载仍待验证，本版新增行为也需要手机验收。请先关闭收藏做只读测试；不承诺所有版本兼容或账号风险为零。
 
-下载请打开 [GitHub beta7 Release](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta9)，按文件名选择，合集中的说明与校验清单一并保留：
+下载请打开 [GitHub beta9 Release](https://github.com/bingdilian/zz-picker-public/releases/tag/v1.2.0-beta9)，按文件名选择，合集中的说明与校验清单一并保留：
 
 - [TrollFools dylib](ZZPicker-1.2.0-beta9-trollfools.dylib) / [TrollFools zip](ZZPicker-1.2.0-beta9-trollfools.zip)，任选一种。
 - [rootless deb](ZZPicker-1.2.0-beta9-rootless.deb) / [RootHide deb](ZZPicker-1.2.0-beta9-roothide.deb)，按实际环境选择。

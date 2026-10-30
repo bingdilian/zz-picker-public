@@ -2,7 +2,7 @@
 
 在转转中按手机型号、待售手机 iOS 版本、购买渠道、容量和成色筛选商品，命中后暂停供你查看，并可按开关自动加入收藏。
 
-**[下载 beta9 安装文件](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta9)** · [版本记录](docs/public/CHANGELOG.md) · [问题反馈](docs/public/feedback.md)
+**[下载 beta9 安装文件](https://github.com/bingdilian/zz-picker-public/releases/tag/v1.2.0-beta9)** · [版本记录](docs/public/CHANGELOG.md) · [问题反馈](docs/public/feedback.md)
 
 > **目前仅使用 TrollFools 注入 `.dylib` 文件完成真机测试。** 其余格式虽然已生成并通过本地构建检查，仍需使用者自行测试安装、加载和运行。长时间运行会导致手机发热，介意请勿使用。
 
@@ -25,13 +25,13 @@
 
 | 下载文件 | 用途与操作 | 真机验证情况 |
 |---|---|---|
-| [ZZPicker-1.2.0-beta9-trollfools.dylib](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-trollfools.dylib) | 在 TrollFools 中选择转转，导入并注入动态库 | **本次实际测试方式** |
-| [ZZPicker-1.2.0-beta9-trollfools.zip](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-trollfools.zip) | 内含 `ZZPicker.dylib`；可先解压，再按 dylib 步骤注入。若工具支持直接导入压缩包，也只导入这一种 | 压缩包直接导入流程未实测 |
-| [ZZPicker-1.2.0-beta9-rootless.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-rootless.deb) | 普通 Dopamine 无根环境，通过该环境的包管理器安装 | 未实测，需自行测试 |
-| [ZZPicker-1.2.0-beta9-roothide.deb](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-roothide.deb) | Dopamine RootHide 环境，通过该环境的包管理器安装，并按环境规则允许转转加载插件 | 未实测，需自行测试 |
-| [ZZPicker-1.2.0-beta9-release.zip](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-release.zip) | 全部格式、说明、源码与校验清单的合集；解压后只选适合自身环境的一种安装文件 | 合集本身不能直接注入 |
-| [ZZPicker-1.2.0-beta9-source.zip](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-source.zip) / GitHub 的 `Source code` 压缩包 | 开发者阅读、修改及构建源码使用 | 不是手机安装包 |
-| [SHA256SUMS](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/SHA256SUMS) / [release.zip.sha256](https://github.com/bingdilian/zz-picker/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-release.zip.sha256) | 下载完整性校验；后一文件用于校验完整合集 | 无需安装或注入 |
+| [ZZPicker-1.2.0-beta9-trollfools.dylib](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-trollfools.dylib) | 在 TrollFools 中选择转转，导入并注入动态库 | **本次实际测试方式** |
+| [ZZPicker-1.2.0-beta9-trollfools.zip](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-trollfools.zip) | 内含 `ZZPicker.dylib`；可先解压，再按 dylib 步骤注入。若工具支持直接导入压缩包，也只导入这一种 | 压缩包直接导入流程未实测 |
+| [ZZPicker-1.2.0-beta9-rootless.deb](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-rootless.deb) | 普通 Dopamine 无根环境，通过该环境的包管理器安装 | 未实测，需自行测试 |
+| [ZZPicker-1.2.0-beta9-roothide.deb](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-roothide.deb) | Dopamine RootHide 环境，通过该环境的包管理器安装，并按环境规则允许转转加载插件 | 未实测，需自行测试 |
+| [ZZPicker-1.2.0-beta9-release.zip](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-release.zip) | 全部格式、说明、源码与校验清单的合集；解压后只选适合自身环境的一种安装文件 | 合集本身不能直接注入 |
+| [ZZPicker-1.2.0-beta9-source.zip](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-source.zip) / GitHub 的 `Source code` 压缩包 | 开发者阅读、修改及构建源码使用 | 不是手机安装包 |
+| [SHA256SUMS](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta9/SHA256SUMS) / [release.zip.sha256](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta9/ZZPicker-1.2.0-beta9-release.zip.sha256) | 下载完整性校验；后一文件用于校验完整合集 | 无需安装或注入 |
 
 ### 2. TrollFools 注入 dylib（已实测）
 
@@ -107,9 +107,9 @@
 
 ## 后续问题与反馈
 
-后续重点验证其他机型与安装格式、连续翻页与超时恢复、单一成色的字段一致性，以及平台焕新电池的收藏二次确认流程。巨魔 / 越狱兼容性筛选与机型选择器在 [v2-compatibility](https://github.com/bingdilian/zz-picker/tree/v2-compatibility) 分支开发，**尚未包含在 beta9**。
+后续重点验证其他机型与安装格式、连续翻页与超时恢复、单一成色的字段一致性，以及平台焕新电池的收藏二次确认流程。巨魔 / 越狱兼容性筛选与机型选择器在 [v2-compatibility](https://github.com/bingdilian/zz-picker-public/tree/v2-compatibility) 分支开发，**尚未包含在 beta9**。
 
-发现问题时，请在 [v1 问题反馈表单](https://github.com/bingdilian/zz-picker/issues/new?template=v1-bug-report.yml) 或原讨论中提供：实际手机型号、iOS、转转版本、插件版本、注入工具与文件格式、复现步骤、暂停提示，以及预览检查后的诊断。收藏异常先核对转转收藏页，再反馈，详见[反馈说明](docs/public/feedback.md)。
+发现问题时，请在 [v1 问题反馈表单](https://github.com/bingdilian/zz-picker-public/issues/new?template=v1-bug-report.yml) 或原讨论中提供：实际手机型号、iOS、转转版本、插件版本、注入工具与文件格式、复现步骤、暂停提示，以及预览检查后的诊断。收藏异常先核对转转收藏页，再反馈，详见[反馈说明](docs/public/feedback.md)。
 
 开发者可使用 Mac 上的 Xcode、Python 3 和 Node.js 执行 `make check`；界面检查使用 `make ui-tests`。本地检查和模拟器结果不替代上述真机实践。
 

@@ -4,7 +4,7 @@
 
 ## GitHub 问题反馈表单
 
-打开 [v1 问题反馈表单](https://github.com/bingdilian/zz-picker/issues/new?template=v1-bug-report.yml)，按提示填写实际手机环境、安装方式、问题阶段、复现步骤和结果，再按需附上已预览检查的诊断或截图。模板对应第一版；GitHub Issues 为整个仓库共用，不会按代码分支分别创建。
+打开 [v1 问题反馈表单](https://github.com/bingdilian/zz-picker-public/issues/new?template=v1-bug-report.yml)，按提示填写实际手机环境、安装方式、问题阶段、复现步骤和结果，再按需附上已预览检查的诊断或截图。模板对应第一版；GitHub Issues 为整个仓库共用，不会按代码分支分别创建。
 
 也可从仓库的 Issues → New issue 选择“v1 问题反馈”。无法使用表单时，可在原讨论中按下列格式反馈。
 
