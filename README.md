@@ -1,6 +1,6 @@
 # 转转选机助手 · 1.2.0-beta9
 
-在转转中按手机型号、待售手机 iOS 版本、购买渠道、容量和成色筛选商品，命中后暂停供你查看，并可按开关自动加入收藏。这是社区免费使用的非官方插件，无需另行注册、付费或连接插件服务器。
+在转转中按手机型号、待售手机 iOS 版本、购买渠道、容量和成色筛选商品，命中后暂停供你查看，并可按开关自动加入收藏。
 
 **[下载 beta9 安装文件](https://github.com/bingdilian/zz-picker/releases/tag/v1.2.0-beta9)** · [版本记录](docs/public/CHANGELOG.md) · [问题反馈](docs/public/feedback.md)
 
