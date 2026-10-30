@@ -8,8 +8,8 @@
 
 | 分支 | 用途 |
 |---|---|
-| [v1-compatibility](https://github.com/bingdilian/zz-picker/tree/v1-compatibility) | 第一版，保留现有说明、发布记录及下载入口 |
-| [v2-compatibility](https://github.com/bingdilian/zz-picker/tree/v2-compatibility) | 第二版，进行兼容性筛选与机型联动开发 |
+| [v1-compatibility](https://github.com/bingdilian/zz-picker-public/tree/v1-compatibility) | 第一版，保留现有说明、发布记录及下载入口 |
+| [v2-compatibility](https://github.com/bingdilian/zz-picker-public/tree/v2-compatibility) | 第二版，进行兼容性筛选与机型联动开发 |
 
 ## 第二版计划
 
