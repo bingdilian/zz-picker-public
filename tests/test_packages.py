@@ -79,6 +79,8 @@ class Packages(unittest.TestCase):
 
     def test_source_archive_matches_project_and_excludes_capture_secrets(self):
         with zipfile.ZipFile(DIST / 'ZZPicker-1.2.0-beta9-source.zip') as z:
+            self.assertIn('zz-picker/LICENSE', z.namelist())
+            self.assertEqual(z.read('zz-picker/LICENSE'), (ROOT / 'LICENSE').read_bytes())
             self.assertTrue(all(n.startswith('zz-picker/') for n in z.namelist()))
             self.assertEqual(z.read('zz-picker/src/core.js'), (ROOT / 'src/core.js').read_bytes())
             self.assertFalse(any(p in {'build', 'dist', '.git', '__pycache__', '.DS_Store'} for n in z.namelist() for p in Path(n).parts[1:]))
@@ -114,6 +116,13 @@ class Packages(unittest.TestCase):
         self.assertEqual(hashlib.sha256(release.read_bytes()).hexdigest(), digest)
         with zipfile.ZipFile(release) as z:
             names = set(z.namelist())
+            self.assertIn('LICENSE', names)
+            self.assertEqual(z.read('LICENSE'), (ROOT / 'LICENSE').read_bytes())
+            for image in (ROOT / 'docs/public/images').glob('*.jpg'):
+                self.assertEqual(z.read('images/' + image.name), image.read_bytes())
+            import re
+            for image in re.findall(r'<img[^>]+src="([^"]+)"', z.read('README.md').decode()):
+                self.assertIn(image, names, 'Bundled README image must resolve')
             manifest = z.read('SHA256SUMS').decode().splitlines()
             self.assertEqual(names, {'SHA256SUMS'} | {line.split('  ', 1)[1] for line in manifest})
             for line in manifest:

@@ -87,33 +87,39 @@ def source_archive():
             relative = path.relative_to(ROOT)
             if not path.is_file() or any(p in {'build', 'dist', '__pycache__', '.git', '.DS_Store'} for p in relative.parts):
                 continue
-            if not (relative.parts[0] in {'src', 'scripts', 'tests'} or relative.parts[:2] == ('docs', 'public') or relative.as_posix() in {'README.md', 'Makefile', '.gitignore'}):
+            if not (relative.parts[0] in {'src', 'scripts', 'tests'} or relative.parts[:2] == ('docs', 'public') or relative.as_posix() in {'README.md', 'Makefile', '.gitignore', 'LICENSE'}):
                 continue
             z.write(path, 'zz-picker/' + relative.as_posix())
 
 def manifest():
     hashes = []
     for p in release_files():
-        hashes.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name)
+        hashes.append(hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.relative_to(DIST).as_posix())
     (DIST / 'SHA256SUMS').write_text('\n'.join(hashes) + '\n')
 
 def release_files():
     names = [f'ZZPicker-{VERSION}-{suffix}' for suffix in
              ['trollfools.dylib', 'trollfools.zip', 'rootless.deb', 'roothide.deb', 'source.zip']]
-    names += ['README.md', 'install.md', 'compatibility.md', 'feedback.md', 'CHANGELOG.md', 'forum-post.md']
+    names += ['LICENSE', 'README.md', 'install.md', 'compatibility.md', 'feedback.md', 'CHANGELOG.md', 'forum-post.md']
+    names += ['images/' + p.name for p in sorted((ROOT / 'docs/public/images').glob('*')) if p.is_file()]
     return [DIST / name for name in sorted(names)]
 
 def release_bundle():
-    for source in [ROOT / 'README.md', *sorted((ROOT / 'docs' / 'public').glob('*.md'))]:
+    for source in [ROOT / 'LICENSE', ROOT / 'README.md', *sorted((ROOT / 'docs' / 'public').glob('*.md'))]:
         text = source.read_text()
         if source.name == 'README.md':
-            text = text.replace('(docs/public/', '(')
+            text = text.replace('docs/public/', '')
         (DIST / source.name).write_text(text)
+    for image in sorted((ROOT / 'docs/public/images').glob('*')):
+        if image.is_file():
+            target = DIST / 'images' / image.name
+            target.parent.mkdir(exist_ok=True)
+            target.write_bytes(image.read_bytes())
     manifest()
     release = DIST / f'ZZPicker-{VERSION}-release.zip'
     with zipfile.ZipFile(release, 'w', zipfile.ZIP_DEFLATED) as z:
         for path in [*release_files(), DIST / 'SHA256SUMS']:
-            z.write(path, path.name)
+            z.write(path, path.relative_to(DIST).as_posix())
     (DIST / (release.name + '.sha256')).write_text(hashlib.sha256(release.read_bytes()).hexdigest() + '  ' + release.name + '\n')
 
 def main():
