@@ -113,6 +113,8 @@
 
 开发者可使用 Mac 上的 Xcode、Python 3 和 Node.js 执行 `make check`；界面检查使用 `make ui-tests`。本地检查和模拟器结果不替代上述真机实践。
 
+开发和发布统一在本仓库完成。第一版维护使用 `v1-compatibility`，第二版开发使用 `v2-compatibility`，详见[开发与版本管理](docs/public/development.md)。
+
 ## 许可证
 
 本项目源码采用 [MIT License](LICENSE)。允许使用、修改、分发、商业使用及闭源衍生；分发时须保留版权及许可声明。软件按原样提供，不作担保。转转 App、商标及截图中的第三方内容不在本项目源码的授权范围内。
