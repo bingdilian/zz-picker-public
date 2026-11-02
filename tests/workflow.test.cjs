@@ -1,5 +1,31 @@
 const test=require('node:test'),assert=require('node:assert/strict'),C=require('../src/core.js'),f=require('./fixtures/capture.json');
 const config=extra=>({model:'iPhone 15 Pro Max',minIOS:'26.0',maxIOS:'26.6.2',conditions:['95新'],capacities:['512'],autoFavorite:false,...extra});
+
+test('run_freezes_nested_config_and_rules while snapshot edits never affect task',()=>{
+ const K=require('../src/compatibility.js'),Q=require('../src/config.js'),ctx=K.defaultRuleContext();
+ const c=Q.applyConfigEdit(Q.freshConfig(),{type:'selectModel',modelId:'iphone-14-pro-max'},ctx);c.requireTrollStore=true;c.capacities=['256'];
+ const r=new C.Run(c,()=>0,ctx);c.capacities.push('128');c.requireTrollStore=false;ctx.tools[0].ranges[0].max='99.0';
+ const s=r.snapshot();assert.deepEqual(s.config.capacities,['256']);assert.equal(s.config.requireTrollStore,true);assert.equal(s.ruleVersion,'compat-2026-10-21.1');
+ assert.deepEqual(s.effectiveRange.ranges.map(x=>[x.min,x.max]),[['16.0','16.6.1'],['17.0','17.0']]);
+ s.config.capacities.push('512');s.effectiveRange.ranges[0].max='99.0';assert.equal(r.snapshot().effectiveRange.ranges[0].max,'16.6.1');
+});
+test('preflight blocks invalid ranges and capacity conflicts without changing originals',()=>{
+ const Q=require('../src/config.js'),c=Q.freshConfig();c.capacities=['128'];assert.equal(C.prepareRun(c).ok,false);assert.throws(()=>new C.Run(c));assert.deepEqual(c.capacities,['128']);
+ c.capacities=[];c.requireTrollStore=true;c.rangeMode='manual';c.manualMinIOS='17.0.1';assert.equal(C.prepareRun(c).ok,false);
+});
+test('P16 capability verdict is retained separately from unknown favorite settlement',()=>{
+ const row=require('./fixtures/compatibility-cases.json').find(r=>r.id==='P16'),r=new C.Run(row.config);r.start();let a=r.next();
+ r.search({respCode:0,respData:{infos:[row.input.item]}},1,a.token,{});a=r.next();r.detail(C.normalizeProduct(row.input),a.token);
+ const s=r.snapshot();assert.equal(s.hit.status,'favoriteUnknown');assert.equal(s.hit.evaluation.status,'match');assert.equal(s.allResults.length,1);assert.ok(s.hit.evaluation.evidence.tools.length);
+});
+test('pending favorite exposes one immutable evaluation and lightweight control snapshot omits history',()=>{
+ const row=structuredClone(require('./fixtures/compatibility-cases.json').find(r=>r.id==='P04'));row.config.autoFavorite=true;
+ const r=new C.Run(row.config);r.start();let a=r.next();r.search({respCode:0,respData:{infos:[row.input.item]}},1,a.token,{});a=r.next();r.detail(C.normalizeProduct(row.input),a.token);
+ assert.equal(r.snapshot().phase,'favorite');assert.equal(r.snapshot().allResults.length,1);const e=r.snapshot().allResults[0].evaluation;
+ assert.equal(e.status,'match');assert.match(e.evidence.effectiveRange.label,/17.0/);
+ const small=r.snapshot(false);assert.equal(small.allResults,undefined);assert.equal(small.results,undefined);assert.equal(small.recordCount,1);
+ a=r.next();r.favoriteResult({respCode:0},a.token);a=r.next();r.verified(true,a.token);assert.equal(r.snapshot().allResults.length,1);assert.deepEqual(r.snapshot().hit.evaluation,e);
+});
 const response=items=>({respCode:0,respData:{infos:items,filterResponse:f.filterResponse}});
 function selection(){const o=C.filterOptions(f.filterResponse);return {'69':[o.capacities.find(x=>x.label==='512G')],'285':[o.conditions.find(x=>x.label==='95新')]};}
 function started(extra){const r=new C.Run(config(extra));r.start();const a=r.next();r.search(response([f.item]),1,a.token,selection());return r;}

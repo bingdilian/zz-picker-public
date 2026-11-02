@@ -1,0 +1,1681 @@
+[
+  {
+    "id": "P01",
+    "synthetic": true,
+    "input": {
+      "id": "1",
+      "item": {
+        "strInfoId": "1",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 16.5.1"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 16.5.1"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "match",
+    "buildRestricted": false
+  },
+  {
+    "id": "P02",
+    "synthetic": true,
+    "input": {
+      "id": "2",
+      "item": {
+        "strInfoId": "2",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 16.7.2"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 16.7.2"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  },
+  {
+    "id": "P03",
+    "synthetic": true,
+    "input": {
+      "id": "3",
+      "item": {
+        "strInfoId": "3",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              },
+              {
+                "key": "构建号",
+                "value": "21A329"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "match",
+    "buildRestricted": false
+  },
+  {
+    "id": "P04",
+    "synthetic": true,
+    "input": {
+      "id": "4",
+      "item": {
+        "strInfoId": "4",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "match",
+    "buildRestricted": false
+  },
+  {
+    "id": "P05",
+    "synthetic": true,
+    "input": {
+      "id": "5",
+      "item": {
+        "strInfoId": "5",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              },
+              {
+                "key": "构建号",
+                "value": "UNKNOWN"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "unknown",
+    "buildRestricted": false
+  },
+  {
+    "id": "P06",
+    "synthetic": true,
+    "input": {
+      "id": "6",
+      "item": {
+        "strInfoId": "6",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0.1"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0.1"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  },
+  {
+    "id": "P07",
+    "synthetic": true,
+    "input": {
+      "id": "7",
+      "item": {
+        "strInfoId": "7",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0.1"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0.1"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": false,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "match",
+    "buildRestricted": false
+  },
+  {
+    "id": "P08",
+    "synthetic": true,
+    "input": {
+      "id": "8",
+      "item": {
+        "strInfoId": "8",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 16.7 RC"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              },
+              {
+                "key": "构建号",
+                "value": "20H18"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 16.7 RC"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  },
+  {
+    "id": "P09",
+    "synthetic": true,
+    "input": {
+      "id": "9",
+      "item": {
+        "strInfoId": "9",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 16.5.1 Beta 1"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 16.5.1 Beta 1"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  },
+  {
+    "id": "P10",
+    "synthetic": true,
+    "input": {
+      "id": "10",
+      "item": {
+        "strInfoId": "10",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 16.6.1"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "unknown",
+    "buildRestricted": false
+  },
+  {
+    "id": "P11",
+    "synthetic": true,
+    "input": {
+      "id": "11",
+      "item": {
+        "strInfoId": "11",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 15 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "unknown",
+    "buildRestricted": false
+  },
+  {
+    "id": "P12",
+    "synthetic": true,
+    "input": {
+      "id": "12",
+      "item": {
+        "strInfoId": "12",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  },
+  {
+    "id": "P13",
+    "synthetic": true,
+    "input": {
+      "id": "13",
+      "item": {
+        "strInfoId": "13",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 15 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 15 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 16.6.1"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 16.6.1"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 15 Pro Max",
+      "modelId": "iphone-15-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "unknown",
+    "buildRestricted": false
+  },
+  {
+    "id": "P14",
+    "synthetic": true,
+    "input": {
+      "id": "14",
+      "item": {
+        "strInfoId": "14",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "美版"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  },
+  {
+    "id": "P15",
+    "synthetic": true,
+    "input": {
+      "id": "15",
+      "item": {
+        "strInfoId": "15",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "unknown",
+    "buildRestricted": false
+  },
+  {
+    "id": "P16",
+    "synthetic": true,
+    "input": {
+      "id": "16",
+      "item": {
+        "strInfoId": "16",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": null,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": true
+    },
+    "status": "match",
+    "buildRestricted": false
+  },
+  {
+    "id": "P17",
+    "synthetic": true,
+    "input": {
+      "id": "17",
+      "item": {
+        "strInfoId": "17",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 16.7.2"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 16.7.2"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  },
+  {
+    "id": "P18",
+    "synthetic": true,
+    "input": {
+      "id": "18",
+      "item": {
+        "strInfoId": "18",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "unknown",
+    "buildRestricted": false
+  },
+  {
+    "id": "P19",
+    "synthetic": true,
+    "input": {
+      "id": "19",
+      "item": {
+        "strInfoId": "19",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "match",
+    "buildRestricted": false
+  },
+  {
+    "id": "P20",
+    "synthetic": true,
+    "input": {
+      "id": "20",
+      "item": {
+        "strInfoId": "20",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "unknown",
+    "buildRestricted": true
+  },
+  {
+    "id": "P21",
+    "synthetic": true,
+    "input": {
+      "id": "21",
+      "item": {
+        "strInfoId": "21",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 17.0 beta 1"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 17.0 beta 1"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  },
+  {
+    "id": "P22",
+    "synthetic": true,
+    "input": {
+      "id": "22",
+      "item": {
+        "strInfoId": "22",
+        "title": "iPhone 14 Pro Max"
+      },
+      "base": {
+        "respCode": 0,
+        "respData": {
+          "title": "iPhone 14 Pro Max",
+          "modelId": "synthetic-platform-model",
+          "isSoldOut": false,
+          "collected": false,
+          "infoLv": {
+            "level": "95新"
+          }
+        }
+      },
+      "more": {
+        "respCode": 0,
+        "respData": {
+          "report": {
+            "title": "iPhone 14 Pro Max",
+            "params": [
+              {
+                "key": "系统版本",
+                "value": "iOS 16.7"
+              },
+              {
+                "key": "存储容量",
+                "value": "256G"
+              },
+              {
+                "key": "购买渠道",
+                "value": "国行"
+              },
+              {
+                "key": "构建号",
+                "value": "20H18"
+              }
+            ],
+            "reportParam": {
+              "paramDetail": [
+                {
+                  "paramInfo": [
+                    {
+                      "paramName": "系统版本",
+                      "paramValue": "iOS 16.7"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "schemaVersion": 3,
+      "model": "iPhone 14 Pro Max",
+      "modelId": "iphone-14-pro-max",
+      "rangeMode": "auto",
+      "manualMinIOS": "",
+      "manualMaxIOS": "",
+      "preserveLegacyRange": false,
+      "requireTrollStore": true,
+      "requireJailbreak": true,
+      "channels": [
+        "国行"
+      ],
+      "capacities": [],
+      "conditions": [],
+      "autoFavorite": false
+    },
+    "status": "reject",
+    "buildRestricted": false
+  }
+]

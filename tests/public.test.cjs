@@ -63,7 +63,7 @@ test('default clock uses native monotonic uptime when provided',()=>{
 
 test('diagnostic snapshots whitelist public fields and require opt-in for product details',()=>{
  const {r}=run();const a=r.next();r.detail(product(f.id),a.token);const source=r.snapshot();source.headers={Cookie:'secret'};source.rawResponse='secret';const d=C.diagnosticSnapshot(source);
- assert.deepEqual(Object.keys(d).sort(),['state','phase','config','page','counts','note','waitingResponse','options','budgetExceeded','limitReason','elapsedMs'].sort());assert.equal(JSON.stringify(d).includes(f.id),false);assert.equal(JSON.stringify(d).includes('secret'),false);
+ assert.deepEqual(Object.keys(d).sort(),['state','phase','config','ruleVersion','effectiveRange','page','counts','note','waitingResponse','options','budgetExceeded','limitReason','elapsedMs'].sort());assert.equal(JSON.stringify(d).includes(f.id),false);assert.equal(JSON.stringify(d).includes('secret'),false);
  const detailed=C.diagnosticSnapshot(source,true);assert.equal(detailed.current.id,f.id);assert.equal(detailed.candidate.id,f.id);assert.equal(detailed.results[0].id,f.id);assert.equal(detailed.hit.id,f.id);assert.equal(detailed.hit.item,undefined);assert.equal(detailed.token,undefined);assert.equal(detailed.allResults,undefined);assert.equal(JSON.stringify(detailed).includes(f.item.jumpUrl),false);assert.equal(source.hit.item.jumpUrl,f.item.jumpUrl);detailed.config.model='changed';assert.equal(source.config.model,'iPhone 15 Pro Max');
 });
 
@@ -85,4 +85,17 @@ test('only the active next-page token can finish a confirmed exhausted list',()=
  assert.equal(r.endOfList({...a.token,step:a.token.step-1}),false);assert.equal(r.endOfList(a.token),true);assert.equal(r.snapshot().state,'finished');assert.equal(r.snapshot().counts.processed,1);assert.equal(r.snapshot().counts.loaded,1);assert.equal(r.next(),null);
  assert.equal(r.search(response([item('999')]),2,a.token,{}),false);
  const paused=run().r;let b=paused.next(),q=product(f.id);q.model='iPhone 13';paused.detail(q,b.token);b=paused.next();paused.returned(b.token);b=paused.next();paused.pause();assert.equal(paused.endOfList(b.token),false);
+});
+
+
+test('candidate public instructions distinguish report policy, local checks and pending device tests',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const read=name=>fs.readFileSync(path.join(__dirname,'../',name),'utf8');
+ const compatibility=read('docs/public/compatibility.md'),install=read('docs/public/install.md'),readme=read('README.md');
+ assert.match(readme,/2\.0\.0-alpha1/);assert.match(readme,/未正式发布/);
+ for(const model of ['iPhone 14 Pro','iPhone 14 Pro Max','iPhone 15 Pro','iPhone 15 Pro Max'])assert.ok(compatibility.includes(model));
+ assert.match(compatibility,/D2/);assert.match(compatibility,/17\.0.*缺.*构建号.*标称/);assert.match(compatibility,/Beta.*RC.*排除/);
+ assert.match(compatibility,/未收录.*不等于.*不支持/);assert.match(compatibility,/真机.*待验证/);assert.match(compatibility,/rootless.*RootHide.*待验证/);
+ assert.match(install,/config\.v3/);assert.match(install,/恢复.*确认|确认.*恢复/);assert.match(install,/5.*件/);assert.match(install,/2.*分钟/);
+ assert.doesNotMatch(readme,/尚未提供第二版安装包|新增功能仍处于设计与开发准备阶段/);
 });

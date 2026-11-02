@@ -19,13 +19,13 @@ static ZZTaskPanel *ZZPanel;
 - (UIButton *)button:(NSString *)title action:(SEL)action primary:(BOOL)primary {UIButton *b=[UIButton buttonWithType:UIButtonTypeSystem];[b setTitle:title forState:UIControlStateNormal];b.titleLabel.numberOfLines=0;b.titleLabel.textAlignment=NSTextAlignmentCenter;b.titleLabel.font=[[UIFontMetrics defaultMetrics]scaledFontForFont:[UIFont systemFontOfSize:15 weight:UIFontWeightSemibold]];[b.heightAnchor constraintGreaterThanOrEqualToConstant:44].active=YES;b.layer.cornerRadius=10;b.backgroundColor=primary?ZZPanelRed():UIColor.secondarySystemBackgroundColor;[b setTitleColor:primary?UIColor.whiteColor:UIColor.labelColor forState:UIControlStateNormal];[b addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];return b;}
 - (void)separator {UIView *line=[UIView new];line.backgroundColor=UIColor.separatorColor;[line.heightAnchor constraintEqualToConstant:0.5].active=YES;[self.stack addArrangedSubview:line];}
 - (void)refresh {
-    NSDictionary *snap=ZZPicker.shared.snapshot,*ui=ZZPicker.shared.presentation,*c=snap[@"counts"],*config=ZZPicker.shared.config;NSString *kind=ui[@"kind"];
+    NSDictionary *snap=ZZPicker.shared.taskSummary,*ui=ZZPicker.shared.presentation,*c=snap[@"counts"],*config=snap[@"config"];NSString *kind=ui[@"kind"];
     [self.stack removeFromSuperview];self.stack=[UIStackView new];self.stack.axis=UILayoutConstraintAxisVertical;self.stack.spacing=13;[self.card addSubview:self.stack];
     UIStackView *heading=[UIStackView new];heading.axis=UILayoutConstraintAxisHorizontal;heading.alignment=UIStackViewAlignmentCenter;[heading addArrangedSubview:ZZLabel(ui[@"title"]?:@"选机助手",17,YES)];
     if(![kind isEqual:@"summary"]){UIButton *collapse=[self button:@"收起" action:@selector(collapse) primary:NO];collapse.backgroundColor=UIColor.clearColor;[heading addArrangedSubview:collapse];}
     [self.stack addArrangedSubview:heading];[self.stack addArrangedSubview:ZZLabel(config[@"model"]?:@"",17,YES)];
     NSMutableArray *caps=[NSMutableArray new];for(NSString *v in config[@"capacities"])[caps addObject:[NSString stringWithFormat:@"%@G",v]];
-    NSString *range=[NSString stringWithFormat:@"iOS %@–%@\n%@ · %@ · %@",[config[@"minIOS"]length]?config[@"minIOS"]:@"不限",[config[@"maxIOS"]length]?config[@"maxIOS"]:@"不限",[config[@"channels"]count]?[config[@"channels"]componentsJoinedByString:@" / "]:@"购买渠道不限",caps.count?[caps componentsJoinedByString:@" / "]:@"容量不限",[config[@"conditions"]count]?[config[@"conditions"]componentsJoinedByString:@" / "]:@"成色不限"];
+    NSString *range=[NSString stringWithFormat:@"%@\n%@ · %@ · %@\n巨魔：%@ · 完整越狱：%@\n规则：%@",snap[@"effectiveRange"][@"label"]?:@"范围未提供",[config[@"channels"]count]?[config[@"channels"]componentsJoinedByString:@" / "]:@"购买渠道不限",caps.count?[caps componentsJoinedByString:@" / "]:@"容量不限",[config[@"conditions"]count]?[config[@"conditions"]componentsJoinedByString:@" / "]:@"成色不限",[config[@"requireTrollStore"]boolValue]?@"要求":@"未要求",[config[@"requireJailbreak"]boolValue]?@"要求":@"未要求",snap[@"ruleVersion"]?:@"不可用"];
     UILabel *criteria=ZZLabel(range,13,NO);criteria.accessibilityIdentifier=@"taskCriteria";criteria.textColor=UIColor.secondaryLabelColor;[self.stack addArrangedSubview:criteria];[self separator];
     UILabel *budget=ZZLabel([NSString stringWithFormat:@"上限 %@ 件 / %@ 分钟 · 已运行 %.1f 分钟",config[@"maxProducts"]?:@100,config[@"maxMinutes"]?:@15,[snap[@"elapsedMs"]doubleValue]/60000],12,NO);budget.textColor=UIColor.secondaryLabelColor;budget.accessibilityIdentifier=@"taskBudget";[self.stack addArrangedSubview:budget];
     UIStackView *counts=[UIStackView new];counts.axis=UILayoutConstraintAxisHorizontal;counts.distribution=UIStackViewDistributionFillEqually;
@@ -41,6 +41,7 @@ static ZZTaskPanel *ZZPanel;
     if([@[@"running",@"loading",@"search",@"favorite"]containsObject:kind])[actions addArrangedSubview:[self button:@"暂停任务" action:@selector(pause) primary:NO]];
     if(actions.arrangedSubviews.count)[self.stack addArrangedSubview:actions];
     if([ui[@"canEnd"]boolValue]){UIButton *end=[self button:@"结束任务" action:@selector(end) primary:NO];end.backgroundColor=UIColor.clearColor;[end setTitleColor:ZZPanelRed() forState:UIControlStateNormal];[self.stack addArrangedSubview:end];}
+    if([snap[@"recordCount"]unsignedIntegerValue])[self.stack addArrangedSubview:[self button:@"核验记录与判定依据" action:@selector(records) primary:NO]];
     if([ui[@"canSettings"]boolValue])[self.stack addArrangedSubview:[self button:[kind isEqual:@"summary"]?@"结果与设置 / 新任务":@"调整设置 / 新任务" action:@selector(settings) primary:NO]];
     if([kind isEqual:@"summary"])[self.stack addArrangedSubview:[self button:@"关闭窗口" action:@selector(hide) primary:NO]];
     [self.mini setTitle:[NSString stringWithFormat:@"%@ · %@/%@ · 展开",[kind isEqual:@"hit"]?@"发现命中":@"选机任务",c[@"processed"]?:@0,c[@"loaded"]?:@0]forState:UIControlStateNormal];
@@ -53,6 +54,7 @@ static ZZTaskPanel *ZZPanel;
 - (void)pause {[ZZPicker.shared pause:@"手动暂停，进度已保留"];}
 - (void)resume {[ZZPicker.shared resume];}
 - (void)view {[ZZPicker.shared viewMatched];}
+- (void)records {ZZPresentRunRecords();}
 - (void)settings {[ZZPicker.shared showSettings];}
 - (void)hide {self.hidden=YES;}
 - (void)end {

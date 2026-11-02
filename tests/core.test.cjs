@@ -107,7 +107,7 @@ test('pagination waits for visible loading, ignores stale requests and stays bou
 });
 
 test('purchase channels default to mainland while explicit unrestricted and saved criteria survive',()=>{
- const c=C.validateConfig(config()).config;assert.deepEqual(c.channels,['国行']);assert.equal(c.autoFavorite,false);assert.equal(c.minIOS,'26.0');
+ const c=C.validateConfig(config()).config;assert.deepEqual(c.channels,['国行']);assert.equal(c.autoFavorite,false);assert.equal(c.manualMinIOS,'26.0');
  assert.deepEqual(C.validateConfig(config({channels:[]})).config.channels,[]);
  assert.deepEqual(C.validateConfig(config({channels:['美版','国行']})).config.channels,['美版','国行']);
  for(const channels of [null,'国行',['未知'],[1]])assert.equal(C.validateConfig(config({channels})).ok,false);

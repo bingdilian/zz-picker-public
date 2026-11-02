@@ -7,6 +7,8 @@ native-tests:
 	build/jscore-tests "$(CURDIR)"
 	xcrun clang -fobjc-arc -Wall -Wextra -Werror -Isrc -framework Foundation tests/runtime.m src/ZZRuntime.m -o build/runtime-tests
 	build/runtime-tests
+	xcrun clang -fobjc-arc -Wall -Wextra -Werror -Isrc -framework Foundation tests/configuration.m src/ZZConfigurationStore.m -o build/configuration-tests
+	build/configuration-tests
 test: native-tests
 	node --test tests/*.test.cjs
 check: all test

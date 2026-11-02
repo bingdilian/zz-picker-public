@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "ruleVersion": "compat-2026-10-21.1",
+  "reviewedAt": "2026-10-21",
+  "models": [
+    {
+      "id": "iphone-14-pro",
+      "name": "iPhone 14 Pro",
+      "searchText": "iPhone 14 Pro",
+      "chip": "A16",
+      "minIOS": "16.0",
+      "capacities": [
+        "128",
+        "256",
+        "512",
+        "1024"
+      ],
+      "sourceIds": [
+        "A5",
+        "A2"
+      ]
+    },
+    {
+      "id": "iphone-14-pro-max",
+      "name": "iPhone 14 Pro Max",
+      "searchText": "iPhone 14 Pro Max",
+      "chip": "A16",
+      "minIOS": "16.0",
+      "capacities": [
+        "128",
+        "256",
+        "512",
+        "1024"
+      ],
+      "sourceIds": [
+        "A1",
+        "A2"
+      ]
+    },
+    {
+      "id": "iphone-15-pro",
+      "name": "iPhone 15 Pro",
+      "searchText": "iPhone 15 Pro",
+      "chip": "A17 Pro",
+      "minIOS": "17.0",
+      "capacities": [
+        "128",
+        "256",
+        "512",
+        "1024"
+      ],
+      "sourceIds": [
+        "A6",
+        "A4"
+      ]
+    },
+    {
+      "id": "iphone-15-pro-max",
+      "name": "iPhone 15 Pro Max",
+      "searchText": "iPhone 15 Pro Max",
+      "chip": "A17 Pro",
+      "minIOS": "17.0",
+      "capacities": [
+        "256",
+        "512",
+        "1024"
+      ],
+      "sourceIds": [
+        "A3",
+        "A4"
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "id": "trollstore",
+      "capability": "trollstore",
+      "version": "2.1.1",
+      "modelIds": [
+        "iphone-14-pro",
+        "iphone-14-pro-max",
+        "iphone-15-pro",
+        "iphone-15-pro-max"
+      ],
+      "ranges": [
+        {
+          "min": "14.0",
+          "max": "16.6.1",
+          "predicateIds": []
+        },
+        {
+          "min": "17.0",
+          "max": "17.0",
+          "predicateIds": [
+            "ts17"
+          ]
+        }
+      ],
+      "sourceIds": [
+        "T1",
+        "T2"
+      ],
+      "predicates": [
+        {
+          "id": "ts17",
+          "kind": "versionWide",
+          "version": "17.0",
+          "knownBuilds": [
+            "21A326",
+            "21A327",
+            "21A329",
+            "21A331"
+          ]
+        }
+      ],
+      "installPaths": [
+        {
+          "id": "trollrestore",
+          "revision": "082f2520556b9aa8e2b8d6661b81a954ee35966b",
+          "requiresComputer": true,
+          "ranges": [
+            {
+              "min": "15.2",
+              "max": "16.6.1",
+              "predicateIds": []
+            },
+            {
+              "min": "17.0",
+              "max": "17.0",
+              "predicateIds": [
+                "ts17"
+              ]
+            }
+          ],
+          "sourceIds": [
+            "T3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dopamine",
+      "capability": "jailbreak",
+      "version": "3.0.11",
+      "modelIds": [
+        "iphone-14-pro",
+        "iphone-14-pro-max",
+        "iphone-15-pro",
+        "iphone-15-pro-max"
+      ],
+      "ranges": [
+        {
+          "min": "16.0",
+          "max": "17.3.1",
+          "predicateIds": []
+        }
+      ],
+      "predicates": [],
+      "sourceIds": [
+        "D1",
+        "D2",
+        "D3"
+      ]
+    }
+  ],
+  "excludePrerelease": true,
+  "knownRCBuilds": [
+    "20H18"
+  ],
+  "sources": [
+    {
+      "id": "A1",
+      "title": "iPhone 14 Pro Max技术规格",
+      "url": "https://support.apple.com/zh-cn/111846",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "A2",
+      "title": "iPhone 14 Pro系列发布资料",
+      "url": "https://www.apple.com.cn/newsroom/2022/09/apple-debuts-iphone-14-pro-and-iphone-14-pro-max/",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "A3",
+      "title": "iPhone 15 Pro Max技术规格",
+      "url": "https://support.apple.com/zh-cn/111828",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "A4",
+      "title": "iPhone 15 Pro系列发布资料",
+      "url": "https://www.apple.com/newsroom/2023/09/apple-unveils-iphone-15-pro-and-iphone-15-pro-max/",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "A5",
+      "title": "iPhone 14 Pro技术规格",
+      "url": "https://support.apple.com/zh-cn/111849",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "A6",
+      "title": "iPhone 15 Pro技术规格",
+      "url": "https://support.apple.com/zh-cn/111829",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "T1",
+      "title": "TrollStore 2.1.1",
+      "url": "https://github.com/opa334/TrollStore/tree/2.1.1",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "T2",
+      "title": "TrollStore正式版",
+      "url": "https://github.com/opa334/TrollStore/releases/tag/2.1.1",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "T3",
+      "title": "TrollRestore固定快照",
+      "url": "https://github.com/JJTech0130/TrollRestore/tree/082f2520556b9aa8e2b8d6661b81a954ee35966b",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "D1",
+      "title": "Dopamine 3.0.11正式版",
+      "url": "https://github.com/opa334/Dopamine/releases/tag/3.0.11",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "D2",
+      "title": "Dopamine固定README",
+      "url": "https://github.com/opa334/Dopamine/blob/3.0.11/README.md",
+      "reviewedAt": "2026-10-21"
+    },
+    {
+      "id": "D3",
+      "title": "Dopamine官方说明",
+      "url": "https://ellekit.space/dopamine/",
+      "reviewedAt": "2026-10-21"
+    }
+  ]
+}

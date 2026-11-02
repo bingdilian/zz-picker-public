@@ -5,6 +5,7 @@ import gzip
 import hashlib
 import io
 import json
+import os
 import plistlib
 import subprocess
 import tarfile
@@ -12,8 +13,23 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD = ROOT / 'build'
-DIST = ROOT / 'dist'
-VERSION = '1.2.0-beta6'
+VERSION = '2.0.0-alpha1'
+DEBIAN_VERSION = VERSION.replace('-', '~', 1)
+
+def output_dir():
+    value = os.environ.get('ZZ_PICKER_OUTPUT_DIR', 'dist')
+    if not value.strip():
+        raise ValueError('ZZ_PICKER_OUTPUT_DIR must not be empty')
+    return (ROOT / value).resolve()
+
+DIST = output_dir()
+
+def ensure_output_available():
+    existing = set(DIST.glob(f'ZZPicker-{VERSION}-*'))
+    existing.update(p for p in [*release_files(), DIST / 'SHA256SUMS'] if p.exists() or p.is_symlink())
+    if existing:
+        raise FileExistsError('Build output already exists; choose a new ZZ_PICKER_OUTPUT_DIR: '
+                              + ', '.join(sorted(p.name for p in existing)))
 
 def run(args):
     subprocess.run(args, cwd=ROOT, check=True)
@@ -41,10 +57,17 @@ def ar(files):
             out.extend(b'\n')
     return bytes(out)
 
+def core_bundle():
+    rules = json.loads((ROOT / 'src/compatibility-rules.json').read_text())
+    source = 'globalThis.ZZCompatibilityRules = ' + json.dumps(rules, ensure_ascii=False) + ';\n'
+    source += (ROOT / 'src/compatibility.js').read_text() + '\n'
+    source += (ROOT / 'src/config.js').read_text() + '\n'
+    return (source + (ROOT / 'src/core.js').read_text()).encode()
+
 def embed():
     lines = []
     for label, name in [('ZZCore', 'core.js'), ('ZZWeb', 'web.js')]:
-        data = (ROOT / 'src' / name).read_bytes()
+        data = core_bundle() if label == 'ZZCore' else (ROOT / 'src' / name).read_bytes()
         lines.append(f'static const unsigned char {label}Bytes[] = {{' + ','.join(map(str, data)) + '};')
         lines.append(f'static const unsigned long {label}Length = {len(data)};')
     (BUILD / 'Embedded.h').write_text('\n'.join(lines) + '\n')
@@ -68,7 +91,7 @@ def deb(variant, dylib):
     binary = dylib.read_bytes()
     control = ('Package: com.codex.zzpicker\n'
                'Name: 转转选机助手\n'
-               'Version: 1.2.0~beta6\n'
+               f'Version: {DEBIAN_VERSION}\n'
                f'Architecture: {arch}\n'
                'Maintainer: Local Developer\n'
                'Section: Tweaks\n'
@@ -82,12 +105,15 @@ def deb(variant, dylib):
     (DIST / f'ZZPicker-{VERSION}-{variant}.deb').write_bytes(archive)
 
 def source_archive():
+    nested_output = DIST.resolve().is_relative_to(ROOT.resolve())
     with zipfile.ZipFile(DIST / f'ZZPicker-{VERSION}-source.zip', 'w', zipfile.ZIP_DEFLATED) as z:
         for path in sorted(ROOT.rglob('*')):
             relative = path.relative_to(ROOT)
+            if nested_output and path.resolve().is_relative_to(DIST.resolve()):
+                continue
             if not path.is_file() or any(p in {'build', 'dist', '__pycache__', '.git', '.DS_Store'} for p in relative.parts):
                 continue
-            if not (relative.parts[0] in {'src', 'scripts', 'tests'} or relative.parts[:2] == ('docs', 'public') or relative.as_posix() in {'README.md', 'Makefile', '.gitignore'}):
+            if not (relative.parts[0] in {'src', 'scripts', 'tests'} or relative.parts[:2] == ('docs', 'public') or relative.as_posix() in {'README.md', 'Makefile', '.gitignore', 'LICENSE'}):
                 continue
             z.write(path, 'zz-picker/' + relative.as_posix())
 
@@ -100,11 +126,11 @@ def manifest():
 def release_files():
     names = [f'ZZPicker-{VERSION}-{suffix}' for suffix in
              ['trollfools.dylib', 'trollfools.zip', 'rootless.deb', 'roothide.deb', 'source.zip']]
-    names += ['README.md', 'install.md', 'compatibility.md', 'feedback.md', 'CHANGELOG.md', 'forum-post.md']
+    names += ['LICENSE', 'README.md', 'install.md', 'compatibility.md', 'feedback.md', 'CHANGELOG.md', 'forum-post.md', 'development.md']
     return [DIST / name for name in sorted(names)]
 
 def release_bundle():
-    for source in [ROOT / 'README.md', *sorted((ROOT / 'docs' / 'public').glob('*.md'))]:
+    for source in [ROOT / 'LICENSE', ROOT / 'README.md', *sorted((ROOT / 'docs' / 'public').glob('*.md'))]:
         text = source.read_text()
         if source.name == 'README.md':
             text = text.replace('(docs/public/', '(')
@@ -117,8 +143,9 @@ def release_bundle():
     (DIST / (release.name + '.sha256')).write_text(hashlib.sha256(release.read_bytes()).hexdigest() + '  ' + release.name + '\n')
 
 def main():
+    ensure_output_available()
     BUILD.mkdir(exist_ok=True)
-    DIST.mkdir(exist_ok=True)
+    DIST.mkdir(parents=True, exist_ok=True)
     embed()
     sdk = subprocess.check_output(['xcrun', '--sdk', 'iphoneos', '--show-sdk-path'], text=True).strip()
     for variant in ['rootless', 'roothide', 'trollfools']:

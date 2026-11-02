@@ -5,11 +5,21 @@
 
 NS_ASSUME_NONNULL_BEGIN
 #define ZZPickerOwnViewTag 0x5A5A5001
-#define ZZPickerVersion @"1.2.0-beta6"
+#define ZZPickerVersion @"2.0.0-alpha1"
 
 @interface ZZPicker : NSObject <WKScriptMessageHandler>
 + (instancetype)shared;
 @property(nonatomic, readonly) NSDictionary *config;
+@property(nonatomic, readonly) NSDictionary *configLoadState;
+@property(nonatomic, readonly, nullable) NSString *initializationError;
+- (nullable NSString *)saveConfigurationDraft:(NSDictionary *)draft;
+- (nullable NSString *)resolveConfigurationRecovery:(NSString *)choice;
+- (nullable NSString *)reloadCompatibilityRules;
+- (NSDictionary *)compatibilityCatalog;
+- (NSDictionary *)effectiveRangeForConfig:(NSDictionary *)config;
+- (NSDictionary *)compatibilityEvidenceForConfig:(NSDictionary *)config;
+- (NSDictionary *)configurationByEditing:(NSDictionary *)config event:(NSDictionary *)event;
+- (NSString *)modelIDForText:(NSString *)text;
 @property(nonatomic, readonly) NSArray<NSString *> *logs;
 @property(nonatomic, readonly, getter=isEnabled) BOOL enabled;
 @property(nonatomic, weak, nullable) WKWebView *detailWeb;
@@ -19,6 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, nullable) NSString *borrowedUserAgent;
 - (void)install;
 - (NSDictionary *)snapshot;
+- (NSDictionary *)taskSummary;
 - (NSDictionary *)presentation;
 - (nullable NSString *)normalizedCapacity:(NSString *)label;
 - (NSArray<NSString *> *)purchaseChannels;
@@ -58,6 +69,12 @@ FOUNDATION_EXPORT void ZZPresentSettings(void);
 FOUNDATION_EXPORT void ZZPresentDiagnostics(void);
 FOUNDATION_EXPORT void ZZDismissSettings(void (^completion)(void));
 FOUNDATION_EXPORT BOOL ZZSettingsVisible(void);
+FOUNDATION_EXPORT void ZZPushModelPicker(UINavigationController *navigation,NSDictionary *catalog,NSString *selectedID,NSString *legacyText,void (^didSelect)(NSString *modelID));
+FOUNDATION_EXPORT void ZZPushCompatibilityEvidence(UINavigationController *navigation,NSDictionary *evidence);
+FOUNDATION_EXPORT void ZZPushConfigRecovery(UINavigationController *navigation,NSDictionary *state,void (^didChoose)(NSString *choice));
+FOUNDATION_EXPORT void ZZPushProductChecks(UINavigationController *navigation,NSDictionary *result);
+FOUNDATION_EXPORT void ZZPushRunRecords(UINavigationController *navigation,NSDictionary *snapshot);
+FOUNDATION_EXPORT void ZZPresentRunRecords(void);
 FOUNDATION_EXPORT void ZZShowTaskPanel(void);
 FOUNDATION_EXPORT void ZZHideTaskPanel(void);
 FOUNDATION_EXPORT WKWebView * _Nullable ZZLoadCollector(NSDictionary *item, BOOL reloadOnly);

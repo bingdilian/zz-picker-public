@@ -1,12 +1,15 @@
 #import "ZZPicker.h"
 #import "Embedded.h"
 #import "ZZRuntime.h"
+#import "ZZConfigurationStore.h"
 #import <objc/runtime.h>
 #import <sys/utsname.h>
 #ifndef ZZ_VARIANT
 #define ZZ_VARIANT "development"
 #endif
 @interface ZZPicker () <UIGestureRecognizerDelegate>
+- (instancetype)initWithDefaults:(NSUserDefaults *)defaults;
+- (instancetype)initWithDefaults:(NSUserDefaults *)defaults coreSource:(NSString *)source;
 @property(nonatomic,strong) JSContext *js;
 @property(nonatomic,strong) JSValue *run;
 @property(nonatomic,strong) JSValue *mutations;
@@ -14,6 +17,11 @@
 @property(nonatomic,strong) ZZFilterDriver *filterDriver;
 @property(nonatomic,strong) NSDictionary *pendingFilterResponse;
 @property(nonatomic,copy) NSDictionary *config;
+@property(nonatomic,copy) NSDictionary *configLoadState;
+@property(nonatomic,copy) NSString *initializationError;
+@property(nonatomic,copy) NSDictionary *ruleContext;
+@property(nonatomic,strong) ZZConfigurationStore *configurationStore;
+@property(nonatomic,readonly) NSDictionary *activeTaskConfig;
 @property(nonatomic,strong) NSMutableArray *mutableLogs;
 @property(nonatomic,strong) NSMutableArray *searchTrace;
 @property(nonatomic,strong) NSHashTable<WKWebView *> *webViews;
@@ -28,17 +36,70 @@
 static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [[NSString alloc]initWithBytes:bytes length:length encoding:NSUTF8StringEncoding]?:@"";}
 @implementation ZZPicker
 + (instancetype)shared {static ZZPicker *p;static dispatch_once_t once;dispatch_once(&once,^{p=[ZZPicker new];});return p;}
-- (instancetype)init {
+- (instancetype)init {return [self initWithDefaults:NSUserDefaults.standardUserDefaults];}
+- (instancetype)initWithDefaults:(NSUserDefaults *)defaults {
+    return [self initWithDefaults:defaults coreSource:ZZSource(ZZCoreBytes,ZZCoreLength)];
+}
+- (instancetype)initWithDefaults:(NSUserDefaults *)defaults coreSource:(NSString *)source {
     if((self=[super init])){
         _js=[JSContext new];_mutableLogs=[NSMutableArray new];_searchTrace=[NSMutableArray new];_webViews=[NSHashTable weakObjectsHashTable];_detailParts=[NSMutableDictionary new];
-        __weak ZZPicker *weakSelf=self;_js.exceptionHandler=^(JSContext *context,JSValue *exception){(void)context;(void)exception;[weakSelf pause:@"规则执行异常，请导出诊断"];};
+        _configurationStore=[[ZZConfigurationStore alloc]initWithDefaults:defaults];
+        __block BOOL loading=YES,scriptFailed=NO;
+        __weak ZZPicker *weakSelf=self;_js.exceptionHandler=^(JSContext *context,JSValue *exception){(void)context;(void)exception;if(loading){scriptFailed=YES;return;}[weakSelf pause:@"规则执行异常，请导出诊断"];};
         _js[@"ZZNow"]=^double{return NSProcessInfo.processInfo.systemUptime*1000;};
-        [_js evaluateScript:ZZSource(ZZCoreBytes,ZZCoreLength)];_mutations=[_js[@"ZZCore"][@"MutationGate"]constructWithArguments:@[]];
-        NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;NSDictionary *saved=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v2"];
-        if(!saved)saved=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v1"]?:@{@"model":@"iPhone 15 Pro Max",@"minIOS":@"",@"maxIOS":@"",@"conditions":@[],@"capacities":@[]};
-        NSDictionary *checked=[[_js[@"ZZCore"]invokeMethod:@"validateConfig" withArguments:@[saved]]toDictionary];
-        _config=[checked[@"ok"]boolValue]?checked[@"config"]:@{@"model":@"iPhone 15 Pro Max",@"minIOS":@"",@"maxIOS":@"",@"channels":@[@"国行"],@"conditions":@[],@"capacities":@[],@"autoFavorite":@NO,@"maxProducts":@100,@"maxMinutes":@15};
+        [_js evaluateScript:source];
+        if(scriptFailed){[self failInitialization:@"规则运行时初始化失败：脚本执行异常。设置原文保留，请导出诊断并重新安装完整测试包。"];return self;}
+        BOOL exports=[[_js evaluateScript:@"(function(){return typeof ZZCompatibility==='object'&&ZZCompatibility!==null&&['defaultRuleContext','resolveModel','effectiveRange','evidenceForConfig'].every(function(k){return typeof ZZCompatibility[k]==='function';})&&typeof ZZConfig==='object'&&ZZConfig!==null&&['freshConfig','validateConfig','readStoredConfig','applyConfigEdit','normalizeCapacity'].every(function(k){return typeof ZZConfig[k]==='function';})&&typeof ZZCore==='object'&&ZZCore!==null&&['Run','MutationGate','PageWait','prepareRun','presentation','diagnosticSnapshot','normalizeProduct','safeProductURL','collectedState'].every(function(k){return typeof ZZCore[k]==='function';});})()"]toBool];
+        if(!exports||scriptFailed){[self failInitialization:@"规则运行时初始化失败：必要模块或接口缺失。设置原文保留，请重新安装完整测试包。"];return self;}
+        _ruleContext=[[_js[@"ZZCompatibility"]invokeMethod:@"defaultRuleContext" withArguments:@[]]toDictionary];
+        if(scriptFailed||![_ruleContext isKindOfClass:NSDictionary.class]||![_ruleContext[@"models"]isKindOfClass:NSArray.class]||![_ruleContext[@"tools"]isKindOfClass:NSArray.class]){[self failInitialization:@"规则运行时初始化失败：规则上下文无效。设置原文保留，请重新安装完整测试包。"];return self;}
+        _mutations=[_js[@"ZZCore"][@"MutationGate"]constructWithArguments:@[]];
+        NSDictionary *state=[[_js[@"ZZConfig"]invokeMethod:@"readStoredConfig" withArguments:@[[_configurationStore readSlots],_ruleContext]]toDictionary];
+        if(scriptFailed||!_mutations.isObject||![state isKindOfClass:NSDictionary.class]||![@[@"ready",@"recovery"]containsObject:state[@"status"]]||([state[@"status"]isEqual:@"ready"]&&![state[@"config"]isKindOfClass:NSDictionary.class])){[self failInitialization:@"规则运行时初始化失败：配置接口不可用。设置原文保留，请重新安装完整测试包。"];return self;}
+        loading=NO;
+        _configLoadState=state;_config=[state[@"config"]isKindOfClass:NSDictionary.class]?state[@"config"]:@{};
+        if([state[@"status"]isEqual:@"ready"]&&[state[@"source"]isKindOfClass:NSString.class]&&![state[@"source"]isEqual:@"v3"]){
+            NSString *error=[_configurationStore commitConfiguration:_config backupKeys:@[]];
+            if(error){_configLoadState=@{@"status":@"recovery",@"issues":@[error],@"invalidSlots":@[],@"backup":_config,@"backupSource":state[@"source"]};_config=@{};}
+        }
     }return self;
+}
+- (void)failInitialization:(NSString *)message {
+    self.initializationError=message;self.config=@{};self.configLoadState=@{@"status":@"unavailable",@"issues":@[message]};
+    self.ruleContext=@{@"catalogAvailable":@NO,@"capabilitiesAvailable":@NO,@"models":@[],@"tools":@[],@"sources":@[],@"issues":@[message]};[self.mutableLogs addObject:message];
+}
+- (NSDictionary *)activeTaskConfig {return self.run?[self.run[@"config"]toDictionary]?:@{}:@{};}
+- (NSDictionary *)compatibilityCatalog {return self.ruleContext;}
+- (NSString *)modelIDForText:(NSString *)text {if(self.initializationError)return @"";JSValue *value=[self.js[@"ZZCompatibility"]invokeMethod:@"resolveModel" withArguments:@[text,self.ruleContext]];return value.isString?value.toString:@"";}
+- (NSDictionary *)configurationByEditing:(NSDictionary *)config event:(NSDictionary *)event {if(self.initializationError)return config;return [[self.js[@"ZZConfig"]invokeMethod:@"applyConfigEdit" withArguments:@[config,event,self.ruleContext]]toDictionary]?:config;}
+- (NSDictionary *)effectiveRangeForConfig:(NSDictionary *)config {
+    if(self.initializationError)return @{@"status":@"unavailable",@"canStart":@NO,@"ranges":@[],@"label":@"",@"issues":@[self.initializationError]};
+    NSDictionary *checked=[[self.js[@"ZZConfig"]invokeMethod:@"validateConfig" withArguments:@[config,self.ruleContext]]toDictionary];
+    if(![checked[@"ok"]boolValue])return @{@"status":@"invalid",@"canStart":@NO,@"ranges":@[],@"label":@"",@"issues":checked[@"errors"]?:@[@"配置无效"]};
+    return [[self.js[@"ZZCompatibility"]invokeMethod:@"effectiveRange" withArguments:@[checked[@"config"],self.ruleContext]]toDictionary];
+}
+- (NSDictionary *)compatibilityEvidenceForConfig:(NSDictionary *)config {if(self.initializationError)return @{@"limitation":self.initializationError};NSMutableDictionary *info=[[[self.js[@"ZZCompatibility"]invokeMethod:@"evidenceForConfig" withArguments:@[config,self.ruleContext]]toDictionary]mutableCopy]?:[NSMutableDictionary new];info[@"effectiveRange"]=[self effectiveRangeForConfig:config];return info;}
+- (NSString *)reloadCompatibilityRules {if(self.initializationError)return self.initializationError;self.ruleContext=[[self.js[@"ZZCompatibility"]invokeMethod:@"defaultRuleContext" withArguments:@[]]toDictionary];[self changed];return [self.ruleContext[@"capabilitiesAvailable"]boolValue]?nil:@"兼容规则暂不可用";}
+- (NSString *)saveConfigurationDraft:(NSDictionary *)draft {
+    if(self.initializationError)return self.initializationError;
+    if([self.configLoadState[@"status"]isEqual:@"recovery"])return @"请先恢复损坏的设置";
+    NSDictionary *checked=[[self.js[@"ZZConfig"]invokeMethod:@"validateConfig" withArguments:@[draft,self.ruleContext]]toDictionary];
+    if(![checked[@"ok"]boolValue])return [checked[@"errors"]componentsJoinedByString:@"；"]?:@"配置无效";
+    NSString *error=[self.configurationStore commitConfiguration:checked[@"config"] backupKeys:@[]];if(error)return error;
+    self.config=checked[@"config"];self.configLoadState=@{@"status":@"ready",@"config":self.config,@"source":@"v3",@"issues":@[],@"invalidSlots":@[]};[self changed];return nil;
+}
+- (NSString *)resolveConfigurationRecovery:(NSString *)choice {
+    if(self.initializationError)return self.initializationError;
+    if(![self.configLoadState[@"status"]isEqual:@"recovery"])return @"当前设置不需要恢复";
+    NSDictionary *candidate=nil;
+    if([choice isEqual:@"restoreBackup"]&&[self.configLoadState[@"backup"]isKindOfClass:NSDictionary.class])candidate=self.configLoadState[@"backup"];
+    else if([choice isEqual:@"useDefaults"])candidate=[[self.js[@"ZZConfig"]invokeMethod:@"freshConfig" withArguments:@[]]toDictionary];
+    if(!candidate)return @"未确认恢复，原设置保持";
+    NSDictionary *checked=[[self.js[@"ZZConfig"]invokeMethod:@"validateConfig" withArguments:@[candidate,self.ruleContext]]toDictionary];
+    if(![checked[@"ok"]boolValue])return @"恢复候选校验失败";
+    NSMutableArray *keys=[NSMutableArray new];for(NSString *slot in self.configLoadState[@"invalidSlots"])[keys addObject:[@"com.codex.zzpicker.config." stringByAppendingString:slot]];
+    NSString *error=[self.configurationStore commitConfiguration:checked[@"config"] backupKeys:keys];if(error)return error;
+    self.config=checked[@"config"];self.configLoadState=@{@"status":@"ready",@"config":self.config,@"source":@"v3",@"issues":@[],@"invalidSlots":@[]};[self changed];return nil;
 }
 - (NSArray *)logs {return [self.mutableLogs copy];}
 - (void)log:(NSString *)message {
@@ -48,9 +109,11 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 }
 - (void)changed {[[NSNotificationCenter defaultCenter]postNotificationName:@"ZZPickerUpdated" object:nil];}
 - (NSDictionary *)snapshot {return self.run?[[self.run invokeMethod:@"snapshot" withArguments:@[]]toDictionary]:@{@"state":@"idle",@"phase":@"idle",@"config":self.config,@"page":@1,@"counts":@{},@"results":@[]};}
-- (NSDictionary *)presentation {return [[self.js[@"ZZCore"]invokeMethod:@"presentation" withArguments:@[[self snapshot],@([[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool])]]toDictionary];}
-- (NSString *)normalizedCapacity:(NSString *)label {JSValue *v=[self.js[@"ZZCore"]invokeMethod:@"normalizeCapacity" withArguments:@[label]];return v.isNull||v.isUndefined?nil:v.toString;}
-- (NSArray<NSString *> *)purchaseChannels {return [self.js[@"ZZCore"][@"channelChoices"]toArray]?:@[];}
+- (NSDictionary *)controlSnapshot {return self.run?[[self.run invokeMethod:@"snapshot" withArguments:@[@NO]]toDictionary]:[self snapshot];}
+- (NSDictionary *)taskSummary {return [self controlSnapshot];}
+- (NSDictionary *)presentation {if(self.initializationError)return @{@"kind":@"idle",@"title":@"规则运行时不可用",@"message":self.initializationError,@"canResume":@NO,@"canView":@NO,@"canEnd":@NO,@"canSettings":@YES};return [[self.js[@"ZZCore"]invokeMethod:@"presentation" withArguments:@[[self controlSnapshot],@([[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool])]]toDictionary];}
+- (NSString *)normalizedCapacity:(NSString *)label {if(self.initializationError)return nil;JSValue *v=[self.js[@"ZZCore"]invokeMethod:@"normalizeCapacity" withArguments:@[label]];return v.isNull||v.isUndefined?nil:v.toString;}
+- (NSArray<NSString *> *)purchaseChannels {if(self.initializationError)return @[];return [self.js[@"ZZCore"][@"channelChoices"]toArray]?:@[];}
 - (BOOL)isEnabled {id value=[NSUserDefaults.standardUserDefaults objectForKey:@"com.codex.zzpicker.enabled"];return !value||[value boolValue];}
 - (void)setEnabled:(BOOL)enabled {
     [NSUserDefaults.standardUserDefaults setBool:enabled forKey:@"com.codex.zzpicker.enabled"];
@@ -61,11 +124,11 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     struct utsname machine;NSString *model=uname(&machine)==0?[NSString stringWithUTF8String:machine.machine]:@"unknown";
     model=NSProcessInfo.processInfo.environment[@"SIMULATOR_MODEL_IDENTIFIER"]?:model;
     NSString *app=[NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"]?:@"unknown";
-    return @{@"plugin":ZZPickerVersion,@"variant":@ZZ_VARIANT,@"appVersion":app,@"expectedAppVersion":@"12.8.5",@"verifiedAppVersion":@([app isEqual:@"12.8.5"]),@"iOS":UIDevice.currentDevice.systemVersion,@"deviceModel":model?:@"unknown",@"enabled":@(self.enabled)};
+    return @{@"plugin":ZZPickerVersion,@"variant":@ZZ_VARIANT,@"appVersion":app,@"expectedAppVersion":@"12.8.5",@"verifiedAppVersion":@([app isEqual:@"12.8.5"]),@"iOS":UIDevice.currentDevice.systemVersion,@"deviceModel":model?:@"unknown",@"enabled":@(self.enabled),@"runtimeError":self.initializationError?:@""};
 }
 - (NSString *)diagnostics {return [self diagnosticsWithDetails:NO];}
 - (NSString *)diagnosticsWithDetails:(BOOL)includeDetails {
-    NSDictionary *snap=[[self.js[@"ZZCore"]invokeMethod:@"diagnosticSnapshot" withArguments:@[[self snapshot],@(includeDetails)]]toDictionary]?:@{};
+    NSDictionary *snap=self.initializationError?@{@"state":@"unavailable",@"note":self.initializationError}:[[self.js[@"ZZCore"]invokeMethod:@"diagnosticSnapshot" withArguments:@[includeDetails?[self snapshot]:[self controlSnapshot],@(includeDetails)]]toDictionary]?:@{};
     NSMutableDictionary *info=[[self environment]mutableCopy];[info addEntriesFromDictionary:@{@"includesProductDetails":@(includeDetails),@"snapshot":snap,@"searchUI":ZZSearchDiagnostics(),@"filterUI":self.filterDriver.diagnostics?:@{},@"searchTrace":[self.searchTrace copy],@"logs":self.logs}];
     return [[NSString alloc]initWithData:[NSJSONSerialization dataWithJSONObject:info options:NSJSONWritingPrettyPrinted error:nil]encoding:NSUTF8StringEncoding]?:@"诊断编码失败";
 }
@@ -77,54 +140,60 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     [self.entryButton addTarget:self action:@selector(entryTapped) forControlEvents:UIControlEventTouchUpInside];[self attachEntry];__weak ZZPicker *weakSelf=self;
     self.entryTimer=[NSTimer scheduledTimerWithTimeInterval:2 repeats:YES block:^(NSTimer *timer){(void)timer;[weakSelf checkTaskBudget];[weakSelf attachEntry];}];
 }
-- (void)entryTapped {NSString *state=[self snapshot][@"state"];if(![@[@"idle",@"stopped",@"finished"]containsObject:state])[self showTask];else[self showSettings];}
+- (void)entryTapped {NSString *state=[self controlSnapshot][@"state"];if(![@[@"idle",@"stopped",@"finished"]containsObject:state])[self showTask];else[self showSettings];}
 - (void)attachEntry {
     UIWindow *window=ZZAppWindow();if(!window)return;if(self.entryButton.superview!=window){[self.entryButton removeFromSuperview];[window addSubview:self.entryButton];}
-    self.entryButton.hidden=ZZSettingsVisible()||ZZViewerVisible();self.entryButton.frame=CGRectMake(MAX(0,window.bounds.size.width-94),window.safeAreaInsets.top+6,86,36);[window bringSubviewToFront:self.entryButton];
+    self.entryButton.hidden=ZZSettingsVisible()||ZZViewerVisible()||ZZTopController().viewIfLoaded.tag==ZZPickerOwnViewTag;self.entryButton.frame=CGRectMake(MAX(0,window.bounds.size.width-94),window.safeAreaInsets.top+6,86,36);[window bringSubviewToFront:self.entryButton];
     if(!self.manualTap){self.manualTap=[[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(manualTouch:)];self.manualPan=[[UIPanGestureRecognizer alloc]initWithTarget:self action:@selector(manualTouch:)];for(UIGestureRecognizer *g in @[self.manualTap,self.manualPan]){g.delegate=self;g.cancelsTouchesInView=NO;g.delaysTouchesEnded=NO;}}
     if(self.manualTap.view!=window){[self.manualTap.view removeGestureRecognizer:self.manualTap];[self.manualPan.view removeGestureRecognizer:self.manualPan];[window addGestureRecognizer:self.manualTap];[window addGestureRecognizer:self.manualPan];}
 }
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {(void)gesture;for(UIView *v=touch.view;v;v=v.superview)if(v.tag==ZZPickerOwnViewTag)return NO;return ![@[@"idle",@"paused",@"hit",@"stopped",@"finished"]containsObject:[self snapshot][@"state"]];}
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {(void)gesture;for(UIView *v=touch.view;v;v=v.superview)if(v.tag==ZZPickerOwnViewTag)return NO;return ![@[@"idle",@"paused",@"hit",@"stopped",@"finished"]containsObject:[self controlSnapshot][@"state"]];}
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other {(void)gesture;(void)other;return YES;}
 - (void)manualTouch:(UIGestureRecognizer *)g {if(g.state==UIGestureRecognizerStateBegan||g.state==UIGestureRecognizerStateRecognized)[self pause:@"检测到手动操作，任务已暂停"];}
 - (void)background:(NSNotification *)n {(void)n;[self pause:@"转转离开前台，任务已暂停"];}
 - (void)showSettings {[self pause:@"打开设置，任务已暂停"];ZZHideTaskPanel();ZZPresentSettings();[self attachEntry];}
-- (void)showTask {[self attachEntry];if(![[self snapshot][@"state"]isEqual:@"idle"]&&!ZZSettingsVisible()&&!ZZViewerVisible())ZZShowTaskPanel();}
+- (void)showTask {[self attachEntry];if(![[self controlSnapshot][@"state"]isEqual:@"idle"]&&!ZZSettingsVisible()&&!ZZViewerVisible()&&ZZTopController().viewIfLoaded.tag!=ZZPickerOwnViewTag)ZZShowTaskPanel();}
 - (NSString *)startWithConfig:(NSDictionary *)config {
     return [self startWithConfig:config allowUnverified:NO];
 }
 - (NSString *)startWithConfig:(NSDictionary *)config allowUnverified:(BOOL)allow {
+    if(self.initializationError)return self.initializationError;
     if(!self.enabled)return @"插件已停用，请先打开“启用插件”";
     if(![self.environment[@"verifiedAppVersion"]boolValue]&&!allow)return @"当前转转版本尚未验证，请先查看版本说明并确认仅本次测试";
     if([[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool])return @"上一笔收藏仍在处理中，请先等待结果或重开转转核对收藏";
-    NSDictionary *checked=[[self.js[@"ZZCore"]invokeMethod:@"validateConfig" withArguments:@[config]]toDictionary];if(![checked[@"ok"]boolValue])return [checked[@"errors"]componentsJoinedByString:@"；"]?:@"配置无效";
-    if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];ZZStopCollector();self.config=checked[@"config"];[NSUserDefaults.standardUserDefaults setObject:self.config forKey:@"com.codex.zzpicker.config.v2"];
-    self.run=[self.js[@"ZZCore"][@"Run"]constructWithArguments:@[self.config]];[self.run invokeMethod:@"start" withArguments:@[]];self.searchController=nil;[self.detailParts removeAllObjects];[self.searchTrace removeAllObjects];ZZResetPagination(0);
+    if([self.configLoadState[@"status"]isEqual:@"recovery"])return @"请先恢复损坏的设置";
+    NSDictionary *checked=[[self.js[@"ZZCore"]invokeMethod:@"prepareRun" withArguments:@[config,self.ruleContext]]toDictionary];if(![checked[@"ok"]boolValue])return [checked[@"errors"]componentsJoinedByString:@"；"]?:@"配置无效";
+    self.js.exception=nil;JSValue *candidate=[self.js[@"ZZCore"][@"Run"]constructWithArguments:@[checked[@"config"],NSNull.null,self.ruleContext]];
+    if(!candidate.isObject||self.js.exception)return @"新任务构造失败，原任务保留";
+    [candidate invokeMethod:@"start" withArguments:@[]];if(self.js.exception)return @"新任务初始化失败，原任务保留";
+    NSString *error=[self saveConfigurationDraft:checked[@"config"]];if(error)return error;
+    if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];ZZStopCollector();
+    self.run=candidate;self.searchController=nil;[self.detailParts removeAllObjects];[self.searchTrace removeAllObjects];ZZResetPagination(0);
     JSValue *started=self.run;[self log:[NSString stringWithFormat:@"从%@开始新任务；等待实际筛选请求确认",ZZSearchSurface()]];
-    ZZDismissSettings(^{if(self.run==started&&[[self snapshot][@"state"]isEqual:@"search"]){[self attachEntry];[self pump];[self showTask];}});return nil;
+    ZZDismissSettings(^{if(self.run==started&&[[self controlSnapshot][@"state"]isEqual:@"search"]){[self attachEntry];[self pump];[self showTask];}});return nil;
 }
 - (void)pause:(NSString *)reason {if(!self.run)return;[self.run invokeMethod:@"pause" withArguments:@[reason]];@synchronized(self){self.action=nil;}[self prepareAllWebViews];[self log:reason];}
 - (void)resume {if(!self.enabled||!self.run||ZZViewerVisible())return;[self.run invokeMethod:@"resume" withArguments:@[]];[self pump];[self showTask];}
 - (void)stop {if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];@synchronized(self){self.action=nil;}[self prepareAllWebViews];ZZStopCollector();[self log:@"任务已结束，结果与已完成收藏已保留"];[self showTask];}
 - (void)viewMatched {
-    NSDictionary *hit=[self snapshot][@"hit"],*item=hit[@"item"];if(!item)return;
+    NSDictionary *hit=[self controlSnapshot][@"hit"],*item=hit[@"item"];if(!item)return;
     BOOL safe=[[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[item[@"jumpUrl"]?:@"",item[@"id"]?:@""]]toBool];
     if(safe&&[[self.run invokeMethod:@"beginViewing" withArguments:@[]]toBool]){ZZShowMatchedProduct(item);[self attachEntry];[self changed];}
 }
 - (void)returnedFromDetails {[self.run invokeMethod:@"viewed" withArguments:@[]];[self attachEntry];[self changed];[self showTask];}
 - (NSDictionary *)context {@synchronized(self){if(!self.action)return @{};return @{@"token":self.action[@"token"],@"id":self.action[@"id"]?:self.action[@"item"][@"id"]?:@"",@"allowFavorite":@([self.action[@"type"]isEqual:@"favorite"]),@"filterCommit":(self.filterDriver.willCommit||self.filterDriver.complete)?@YES:@NO};}}
 - (void)checkTaskBudget {
-    if(!self.run)return;BOOL exceeded=[[self snapshot][@"budgetExceeded"]boolValue];
+    if(!self.run)return;BOOL exceeded=[[self controlSnapshot][@"budgetExceeded"]boolValue];
     BOOL paused=[[self.run invokeMethod:@"checkBudget" withArguments:@[]]toBool];
-    if(!exceeded&&[[self snapshot][@"budgetExceeded"]boolValue])[self log:[self snapshot][@"limitReason"]?:@"已达到任务上限"];
+    if(!exceeded&&[[self controlSnapshot][@"budgetExceeded"]boolValue])[self log:[self controlSnapshot][@"limitReason"]?:@"已达到任务上限"];
     if(paused)[self pump];
 }
-- (BOOL)isCurrent:(NSDictionary *)a {NSDictionary *s=[self snapshot];return ![@[@"paused",@"hit",@"stopped",@"finished"]containsObject:s[@"state"]]&&[s[@"token"]isEqual:a[@"token"]];}
+- (BOOL)isCurrent:(NSDictionary *)a {NSDictionary *s=[self controlSnapshot];return ![@[@"paused",@"hit",@"stopped",@"finished"]containsObject:s[@"state"]]&&[s[@"token"]isEqual:a[@"token"]];}
 - (void)traceSearch:(NSDictionary *)metadata event:(NSString *)event response:(NSDictionary *)json {
     if(![@[@"/zz/transfer/search",@"/zz/v2/zzsearchfilteritem/getStockCount",@"/zz/v2/zzsearchfilteritem/getFilterItemDTO"]containsObject:metadata[@"path"]?:@""])return;
     // Whitelist the two public filter groups; never retain request headers or unrelated body fields.
     NSDictionary *selection=nil;id raw=metadata[@"selection"];if([raw isKindOfClass:NSDictionary.class]){NSData *bytes=[NSJSONSerialization dataWithJSONObject:@{@"clickItems":raw} options:0 error:nil];if(bytes)selection=ZZSearchSelection([[NSString alloc]initWithData:bytes encoding:NSUTF8StringEncoding]);}
-    NSMutableDictionary *entry=[@{@"time":@(NSDate.date.timeIntervalSince1970),@"event":event,@"path":metadata[@"path"]?:@"",@"keywordMatches":@([metadata[@"keyword"]isEqual:self.config[@"model"]]),@"page":[metadata[@"page"]isKindOfClass:NSString.class]||[metadata[@"page"]isKindOfClass:NSNumber.class]?metadata[@"page"]:@0,@"filterCommit":@([metadata[@"filterCommit"]boolValue]),@"selection":selection?:NSNull.null,@"filterUI":self.filterDriver.diagnostics?:@{},@"state":[self snapshot][@"state"]?:@"idle"}mutableCopy];
+    NSMutableDictionary *entry=[@{@"time":@(NSDate.date.timeIntervalSince1970),@"event":event,@"path":metadata[@"path"]?:@"",@"keywordMatches":@([metadata[@"keyword"]isEqual:self.activeTaskConfig[@"model"]]),@"page":[metadata[@"page"]isKindOfClass:NSString.class]||[metadata[@"page"]isKindOfClass:NSNumber.class]?metadata[@"page"]:@0,@"filterCommit":@([metadata[@"filterCommit"]boolValue]),@"selection":selection?:NSNull.null,@"filterUI":self.filterDriver.diagnostics?:@{},@"state":[self controlSnapshot][@"state"]?:@"idle"}mutableCopy];
     if(json){id infos=[json[@"respData"]isKindOfClass:NSDictionary.class]?json[@"respData"][@"infos"]:nil;entry[@"itemCount"]=[infos isKindOfClass:NSArray.class]?@([infos count]):@0;entry[@"responseOK"]=@([[json[@"respCode"]description]isEqual:@"0"]);}
     [self.searchTrace addObject:entry];if(self.searchTrace.count>40)[self.searchTrace removeObjectAtIndex:0];
 }
@@ -137,7 +206,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 - (void)observeRequest:(NSDictionary *)m {
     if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{[self observeRequest:m];});return;}
     [self traceSearch:m event:@"requestStarted" response:nil];
-    if(![m[@"path"]isEqual:@"/zz/transfer/search"]||![m[@"keyword"]isEqual:self.config[@"model"]]||!self.action||![self isCurrent:self.action])return;
+    if(![m[@"path"]isEqual:@"/zz/transfer/search"]||![m[@"keyword"]isEqual:self.activeTaskConfig[@"model"]]||!self.action||![self isCurrent:self.action])return;
     [self.run invokeMethod:@"searchStarted" withArguments:@[m[@"page"]?:@0,m[@"token"]?:@{}]];
     if(self.pageWait&&!self.pageWait[@"requestSeen"].toBool&&[[self.pageWait invokeMethod:@"requestStarted" withArguments:@[m[@"page"]?:@0,m[@"token"]?:@{}]]toBool])[self log:[NSString stringWithFormat:@"第%@页请求已启动，等待返回",m[@"page"]]];
 }
@@ -155,17 +224,17 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if(![json isKindOfClass:NSDictionary.class]||![m[@"token"]isKindOfClass:NSDictionary.class])return;NSString *path=m[@"path"];
     [self traceSearch:m event:@"responseReceived" response:json];
     if([path isEqual:@"/zz/transfer/addLoveInfo"]&&[[self.mutations invokeMethod:@"complete" withArguments:@[m[@"id"]?:@"",m[@"token"]]]toBool])[self changed];
-    if([[self snapshot][@"state"]isEqual:@"stopped"]){[self.run invokeMethod:@"settleStopped" withArguments:@[path.lastPathComponent,json,m[@"id"]?:@"",m[@"token"]]];[self changed];return;}
-    if([path isEqual:@"/zz/transfer/search"]&&[m[@"keyword"]isEqual:self.config[@"model"]]){
-        NSDictionary *s=[self snapshot];NSUInteger page=[m[@"page"]integerValue];
+    if([[self controlSnapshot][@"state"]isEqual:@"stopped"]){[self.run invokeMethod:@"settleStopped" withArguments:@[path.lastPathComponent,json,m[@"id"]?:@"",m[@"token"]]];[self changed];return;}
+    if([path isEqual:@"/zz/transfer/search"]&&[m[@"keyword"]isEqual:self.activeTaskConfig[@"model"]]){
+        NSDictionary *s=[self controlSnapshot];NSUInteger page=[m[@"page"]integerValue];
         if([s[@"phase"]isEqual:@"filters"]&&self.filterDriver&&!self.filterDriver.complete){if([m[@"filterCommit"]boolValue]&&[s[@"token"]isEqual:m[@"token"]])self.pendingFilterResponse=@{@"json":json,@"metadata":m};return;}
         if(page>[s[@"page"]unsignedIntegerValue])[self.run invokeMethod:@"prefetch" withArguments:@[json,@(page),m[@"token"],m[@"selection"]?:NSNull.null]];
         else if([[self.run invokeMethod:@"search" withArguments:@[json,@(page),m[@"token"],m[@"selection"]?:NSNull.null,m[@"filterCommit"]?:@NO]]toBool]){self.searchController=ZZTopController();[self log:[NSString stringWithFormat:@"收到第%lu页，已验证筛选或进入筛选流程",(unsigned long)page]];[self pump];}
-        if([[self snapshot][@"state"]isEqual:@"paused"]&&self.action){[self log:[self snapshot][@"note"]];[self pump];}
+        if([[self controlSnapshot][@"state"]isEqual:@"paused"]&&self.action){[self log:[self controlSnapshot][@"note"]];[self pump];}
         [self changed];return;
     }
-    if([path isEqual:@"/zz/v2/zzsearchfilteritem/getFilterItemDTO"]){if([m[@"token"][@"run"]isEqual:[self snapshot][@"token"][@"run"]])[self.run invokeMethod:@"updateOptions" withArguments:@[json]];return;}
-    NSDictionary *snapshot=[self snapshot];
+    if([path isEqual:@"/zz/v2/zzsearchfilteritem/getFilterItemDTO"]){if([m[@"token"][@"run"]isEqual:[self controlSnapshot][@"token"][@"run"]])[self.run invokeMethod:@"updateOptions" withArguments:@[json]];return;}
+    NSDictionary *snapshot=[self controlSnapshot];
     if([snapshot[@"current"][@"id"]isEqual:m[@"id"]]){
         if([path isEqual:@"/zz/transfer/addLoveInfo"]&&[[self.run invokeMethod:@"favoriteResult" withArguments:@[json,m[@"token"]]]toBool]){[self pump];return;}
         if([path isEqual:@"/zzopen/waresshow/baseInfo"]&&[snapshot[@"phase"]isEqual:@"verify"]){id value=[[self.js[@"ZZCore"]invokeMethod:@"collectedState" withArguments:@[json]]toObject]?:NSNull.null;if([[self.run invokeMethod:@"verified" withArguments:@[value,m[@"token"]]]toBool]){[self pump];return;}}
@@ -179,12 +248,12 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 }
 - (void)pump {
     NSDictionary *next=[[self.run invokeMethod:@"next" withArguments:@[]]toDictionary];@synchronized(self){self.action=next;}
-    if(!next){[self prepareAllWebViews];NSString *state=[self snapshot][@"state"];if([@[@"stopped",@"finished"]containsObject:state]||([state isEqual:@"hit"]&&![[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool]))ZZStopCollector();[self changed];return;}
+    if(!next){[self prepareAllWebViews];NSString *state=[self controlSnapshot][@"state"];if([@[@"stopped",@"finished"]containsObject:state]||([state isEqual:@"hit"]&&![[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool]))ZZStopCollector();[self changed];return;}
     self.uiAttempts=0;NSString *type=next[@"type"];self.pendingFilterResponse=nil;
-    self.filterDriver=[type isEqual:@"filters"]?[[ZZFilterDriver alloc]initWithConfig:self.config fields:next[@"applyFields"]?:@[@"capacities",@"conditions"]]:nil;
+    self.filterDriver=[type isEqual:@"filters"]?[[ZZFilterDriver alloc]initWithConfig:self.activeTaskConfig fields:next[@"applyFields"]?:@[@"capacities",@"conditions"]]:nil;
     self.pageWait=[type isEqual:@"nextPage"]?[self.js[@"ZZCore"][@"PageWait"]constructWithArguments:@[next[@"token"],next[@"page"],@(NSProcessInfo.processInfo.systemUptime*1000)]]:nil;
     if([type isEqual:@"nextPage"])ZZResetPagination([next[@"page"]unsignedIntegerValue]);
-    if(self.pageWait&&[[self snapshot][@"waitingResponse"]boolValue])[self.pageWait invokeMethod:@"requestStarted" withArguments:@[next[@"page"],next[@"token"]]];
+    if(self.pageWait&&[[self controlSnapshot][@"waitingResponse"]boolValue])[self.pageWait invokeMethod:@"requestStarted" withArguments:@[next[@"page"],next[@"token"]]];
     if([type isEqual:@"open"])[self.detailParts removeAllObjects];[self prepareAllWebViews];[self changed];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,350*NSEC_PER_MSEC),dispatch_get_main_queue(),^{[self drive:next];});
     NSInteger seconds=[type isEqual:@"filters"]?60:25;
@@ -220,6 +289,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 - (NSString *)jsonString:(id)value {return [[NSString alloc]initWithData:[NSJSONSerialization dataWithJSONObject:value?:NSNull.null options:NSJSONWritingFragmentsAllowed error:nil]encoding:NSUTF8StringEncoding]?:@"null";}
 - (void)prepareAllWebViews {for(WKWebView *web in self.webViews){[self installWebView:web];[web evaluateJavaScript:[NSString stringWithFormat:@"window.ZZWeb&&window.ZZWeb.setContext(%@)",[self jsonString:[self context]]]completionHandler:nil];}}
 - (void)installWebView:(WKWebView *)web {
+    if(self.initializationError)return;
     if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{[self installWebView:web];});return;}[self.webViews addObject:web];WKUserContentController *ucc=web.configuration.userContentController;const void *key=sel_registerName("zzPickerWebHandlerInstalled");
     if(!objc_getAssociatedObject(ucc,key)){@try{[ucc addScriptMessageHandler:self name:@"zzPicker"];objc_setAssociatedObject(ucc,key,@YES,OBJC_ASSOCIATION_RETAIN_NONATOMIC);}@catch(NSException *exception){(void)exception;[self log:@"WebKit消息通道冲突"];return;}}
     NSArray *previous=ucc.userScripts;[ucc removeAllUserScripts];for(WKUserScript *s in previous)if(![s.source hasPrefix:@"/*ZZPickerV1*/"])[ucc addUserScript:s];
