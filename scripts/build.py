@@ -100,7 +100,7 @@ def manifest():
 def release_files():
     names = [f'ZZPicker-{VERSION}-{suffix}' for suffix in
              ['trollfools.dylib', 'trollfools.zip', 'rootless.deb', 'roothide.deb', 'source.zip']]
-    names += ['LICENSE', 'README.md', 'install.md', 'compatibility.md', 'feedback.md', 'CHANGELOG.md', 'forum-post.md']
+    names += ['LICENSE', 'README.md', 'install.md', 'compatibility.md', 'feedback.md', 'CHANGELOG.md', 'forum-post.md', 'development.md']
     names += ['images/' + p.name for p in sorted((ROOT / 'docs/public/images').glob('*')) if p.is_file()]
     return [DIST / name for name in sorted(names)]
 

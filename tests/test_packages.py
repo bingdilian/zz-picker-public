@@ -118,6 +118,7 @@ class Packages(unittest.TestCase):
             names = set(z.namelist())
             self.assertIn('LICENSE', names)
             self.assertEqual(z.read('LICENSE'), (ROOT / 'LICENSE').read_bytes())
+            self.assertEqual(z.read('development.md'), (ROOT / 'docs/public/development.md').read_bytes())
             for image in (ROOT / 'docs/public/images').glob('*.jpg'):
                 self.assertEqual(z.read('images/' + image.name), image.read_bytes())
             import re
