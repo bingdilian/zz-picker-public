@@ -37,7 +37,7 @@
   }
   function validateConfig(input) {
     input = input || {};
-    var c = { model: String(input.model || '').trim(), minIOS: String(input.minIOS || '').trim(), maxIOS: String(input.maxIOS || '').trim(), channels: input.channels===undefined?['国行']:input.channels, conditions: input.conditions || [], capacities: input.capacities || [], autoFavorite: input.autoFavorite === true, continueAfterHit: input.continueAfterHit === true };
+    var c = { model: String(input.model || '').trim(), minIOS: String(input.minIOS || '').trim(), maxIOS: String(input.maxIOS || '').trim(), channels: input.channels===undefined?['国行']:input.channels, conditions: input.conditions || [], capacities: input.capacities || [], autoFavorite: input.autoFavorite === true, autoConfirmBattery: input.autoConfirmBattery === true, continueAfterHit: input.continueAfterHit === true };
     var errors = [];
     [['maxProducts',100,2000,'商品数量'],['maxMinutes',15,120,'运行分钟数']].forEach(function(limit){
       var value=input[limit[0]];
@@ -51,6 +51,7 @@
     if (c.maxIOS && !version(c.maxIOS)) errors.push('最高版本格式错误，例如 17.0.3');
     if (c.minIOS && c.maxIOS && compareVersions(c.minIOS,c.maxIOS) === 1) errors.push('最低版本不能大于最高版本');
     if (input.autoFavorite !== undefined && typeof input.autoFavorite !== 'boolean') errors.push('自动收藏必须是开关值');
+    if (input.autoConfirmBattery !== undefined && typeof input.autoConfirmBattery !== 'boolean') errors.push('自动确认换新电池提醒必须是开关值');
     if (input.continueAfterHit !== undefined && typeof input.continueAfterHit !== 'boolean') errors.push('命中后继续扫描必须是开关值');
     if (!Array.isArray(c.channels) || c.channels.some(function(x){return channelChoices.indexOf(x)<0;})) errors.push('购买渠道选项无效');
     if (!Array.isArray(c.conditions) || c.conditions.some(function(x){return ['99新','95新','9成新','8成新'].indexOf(x)<0;})) errors.push('成色选项无效');
@@ -255,7 +256,7 @@
     this.currentProduct=p;var match=matchProduct(p,this.config);this.counts.processed++;if(match.status!=='unknown')this.counts.checked++;
     if(match.status==='match'){
       this.counts.matched++;
-      if(this.config.autoFavorite&&p.collected===false){this.pendingMatch=this._record(p,'favoritePending',['等待收藏结果']);this._issue('favorite',{id:p.id});this.checkBudget();return true;}
+      if(this.config.autoFavorite&&p.collected===false){this.pendingMatch=this._record(p,'favoritePending',['等待收藏结果']);this._issue('favorite',{id:p.id,allowBatteryConfirmation:this.config.autoConfirmBattery});this.checkBudget();return true;}
       if(p.collected===true){this.counts.already++;this._hold('already',['原有收藏，已保留']);}
       else if(this.config.autoFavorite){this.counts.favoriteUnknown++;this._hold('favoriteUnknown',['收藏状态未知，不自动操作']);}
       else this._hold('match',['符合全部条件']);

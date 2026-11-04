@@ -2,7 +2,7 @@
  'use strict';
  if(w.__zzPickerBridgeV1)return;
  w.__zzPickerBridgeV1=true;
- var context=w.__zzPickerInitialContext||{},baseCache={},mutation=false,confirmationObserver=null;
+ var context=w.__zzPickerInitialContext||{},baseCache={},mutation=false,confirmationObserver=null,favoriteAttempt=null,confirmationAttempted=false,favoriteRequestStarted=false;
  var paths=['/zz/transfer/search','/zz/v2/zzsearchfilteritem/getFilterItemDTO','/zzopen/waresshow/baseInfo','/zzopen/waresshow/moreInfo','/zz/transfer/addLoveInfo'];
  function copy(v){return JSON.parse(JSON.stringify(v));}
  function post(m){try{var h=w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers.zzPicker;if(h)h.postMessage(m);}catch(e){/* Page behavior must survive an unavailable native bridge. */}}
@@ -37,7 +37,12 @@
   }catch(e){return null;}
  }
  function failed(info){if(info){var m=copy(info);m.kind='failure';post(m);}}
- function started(info){if(info&&(info.path==='/zz/transfer/search'||info.path==='/zz/transfer/addLoveInfo')){var m=copy(info);m.kind='request';post(m);}}
+ function started(info){
+  if(info&&info.path==='/zz/transfer/addLoveInfo'&&info.id===context.id&&sameToken(info.token,favoriteAttempt)){
+   favoriteRequestStarted=true;
+   stopWatchingConfirmation();
+  }
+  if(info&&(info.path==='/zz/transfer/search'||info.path==='/zz/transfer/addLoveInfo')){var m=copy(info);m.kind='request';post(m);}}
  function observe(info,j){
   if(!info)return;
   if(!j||typeof j!=='object'){failed(info);return;}
@@ -74,21 +79,47 @@
  function stopWatchingConfirmation(){
   if(confirmationObserver){confirmationObserver.disconnect();confirmationObserver=null;}
  }
+ var controlSelector='button,[role="button"],a,span,div,[aria-label]';
+ function sameToken(a,b){return !!a&&!!b&&a.run===b.run&&a.step===b.step;}
+ function matchesFavoritePage(id){
+  var u;try{u=new URL(w.location.href);}catch(e){return false;}
+  return context.allowFavorite===true&&context.id===id&&u.protocol==='https:'&&u.hostname==='m.zhuanzhuan.com'&&!u.port&&!u.hash&&['/u/streamline_detail/new-goods-detail','/u/bm-consign/standard/standard-detail'].indexOf(u.pathname)>=0&&u.searchParams.getAll('infoId').length===1&&u.searchParams.get('infoId')===id;
+ }
+ function visible(el){
+  var r=el.getBoundingClientRect();
+  if(!r.width||!r.height||r.top>=w.innerHeight||r.bottom<=0)return false;
+  for(var node=el;node;node=node.parentElement){
+   var style=w.getComputedStyle(node);
+   if(style.display==='none'||style.visibility==='hidden'||style.opacity==='0'||node.getAttribute('aria-hidden')==='true')return false;
+  }
+  return true;
+ }
+ function hasLabel(el,label){
+  function clean(text){return (text||'').replace(/[\s，,]/g,'');}
+  return clean(el.textContent)===label||clean(el.getAttribute('aria-label'))===label;
+ }
+ function confirmationControls(){
+  var controls=Array.prototype.filter.call(document.querySelectorAll(controlSelector),function(el){
+   return hasLabel(el,'知道了继续收藏')&&visible(el);
+  });
+  return controls.filter(function(el){
+   return !controls.some(function(other){return other!==el&&typeof el.contains==='function'&&el.contains(other);});
+  });
+ }
+ function isBatteryPrompt(button){
+  // Require the battery heading in the same local container as the confirmation control.
+  var node=button.parentElement;
+  for(var depth=0;node&&depth<5&&node!==document.body&&node!==document.documentElement;depth++,node=node.parentElement){
+   if(Array.prototype.some.call(node.querySelectorAll('h1,h2,h3,span,div,p,[role="heading"],[aria-label]'),function(heading){
+    return hasLabel(heading,'平台焕新电池')&&visible(heading);
+   }))return true;
+  }
+  return false;
+ }
  function watchConfirmation(id,token){
   function inspect(){
-   var controls=Array.prototype.slice.call(document.querySelectorAll('button,[role="button"],a,span,div,[aria-label]'));
-   var visible=controls.some(function(el){
-    function isConfirmation(text){return (text||'').replace(/[\s，,]/g,'')==='知道了继续收藏';}
-    if(!isConfirmation(el.textContent)&&!isConfirmation(el.getAttribute('aria-label')))return false;
-    var r=el.getBoundingClientRect();
-    if(!r.width||!r.height||r.top>=w.innerHeight||r.bottom<=0)return false;
-    for(var node=el;node;node=node.parentElement){
-     var style=w.getComputedStyle(node);
-     if(style.display==='none'||style.visibility==='hidden'||style.opacity==='0'||node.getAttribute('aria-hidden')==='true')return false;
-    }
-    return true;
-   });
-   if(visible){stopWatchingConfirmation();post({kind:'favoriteConfirmation',id:id,token:token});}
+   if(favoriteRequestStarted||!sameToken(token,context.token)||!matchesFavoritePage(id)){stopWatchingConfirmation();return;}
+   if(confirmationControls().length){stopWatchingConfirmation();post({kind:'favoriteConfirmation',id:id,token:token});}
   }
   if(w.MutationObserver&&document.documentElement){
    confirmationObserver=new w.MutationObserver(inspect);
@@ -99,12 +130,11 @@
  w.ZZWeb={
   setContext:function(value){
    var next=value&&typeof value==='object'?copy(value):{};
-   if(!next.allowFavorite||next.id!==context.id||!next.token||!context.token||next.token.run!==context.token.run||next.token.step!==context.token.step)stopWatchingConfirmation();
+   if(!next.allowFavorite||next.id!==context.id||!sameToken(next.token,context.token))stopWatchingConfirmation();
    context=next;
   },
   favorite:function(id){
-   var u;try{u=new URL(w.location.href);}catch(e){return {ok:false,reason:'页面地址无效'};}
-   if(!context.allowFavorite||context.id!==id||u.protocol!=='https:'||u.hostname!=='m.zhuanzhuan.com'||u.port||u.hash||['/u/streamline_detail/new-goods-detail','/u/bm-consign/standard/standard-detail'].indexOf(u.pathname)<0||u.searchParams.getAll('infoId').length!==1||u.searchParams.get('infoId')!==id)return {ok:false,reason:'商品或任务不匹配'};
+   if(!matchesFavoritePage(id))return {ok:false,reason:'商品或任务不匹配'};
    if(baseCache[id]!==false)return {ok:false,reason:'未确认商品当前未收藏'};
    if(mutation)return {ok:false,reason:'本页已发起收藏，等待确认'};
    var nodes=Array.prototype.slice.call(document.querySelectorAll('button,[role="button"],a,span,div,[aria-label]'));
@@ -115,7 +145,24 @@
    // Nested wrappers can have the same label: click only the deepest visible label.
    candidates=candidates.filter(function(el){return !candidates.some(function(other){return other!==el&&typeof el.contains==='function'&&el.contains(other);});});
    if(candidates.length!==1)return {ok:false,reason:candidates.length?'收藏入口不唯一':'未识别到收藏入口'};
-   mutation=true;candidates[0].click();if(context.token)watchConfirmation(id,copy(context.token));return {ok:true};
+   mutation=true;
+   favoriteAttempt=context.token?copy(context.token):null;
+   candidates[0].click();
+   if(favoriteAttempt)watchConfirmation(id,favoriteAttempt);
+   return {ok:true};
+  },
+  confirmBatteryFavorite:function(id,token){
+   if(confirmationAttempted||context.allowBatteryConfirmation!==true||!sameToken(token,favoriteAttempt)||!sameToken(token,context.token)||!matchesFavoritePage(id))return false;
+   if(favoriteRequestStarted)return 'requestStarted';
+   if(baseCache[id]!==false)return false;
+   var buttons=confirmationControls();
+   if(buttons.length!==1||!isBatteryPrompt(buttons[0]))return false;
+   for(var node=buttons[0];node;node=node.parentElement){
+    if(node.disabled||node.getAttribute('aria-disabled')==='true')return false;
+   }
+   confirmationAttempted=true;
+   buttons[0].click();
+   return true;
   }
  };
  post({kind:'ready'});

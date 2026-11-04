@@ -154,3 +154,50 @@ test('visible continue-favorite prompt reports its action token without pressing
  assert.deepEqual(e.messages.find(m=>m.kind==='favoriteConfirmation'),{kind:'favoriteConfirmation',id:fixture.id,token:{run:'a',step:2}});
  assert.equal(confirmClicks,0);assert.equal(disconnected,true);
 });
+
+test('battery confirmation requires opt-in, the active product and a visible unambiguous dialog',async()=>{
+ let inspect,confirmClicks=0;
+ const buttons=[];
+ const e=environment({buttons,MutationObserver:class{
+  constructor(callback){inspect=callback;} observe(){} disconnect(){}
+ }});
+ const token={run:'scan',step:2}, id=fixture.id;
+ const dialog={getAttribute:()=>null,querySelectorAll:()=>[title,confirm]};
+ const title={...e.button,textContent:'平台焕新电池',parentElement:dialog};
+ const confirm={...e.button,textContent:'知道了，继续收藏',parentElement:dialog,click:()=>confirmClicks++};
+ buttons.push(e.button);
+ await e.win.fetch('https://app.zhuanzhuan.com/zzopen/waresshow/baseInfo?infoId='+id);await settle();
+ const context={token,id,allowFavorite:true};
+ e.win.ZZWeb.setContext(context);
+ assert.equal(e.win.ZZWeb.favorite(id).ok,true);
+ buttons.push(title,confirm);inspect();
+ const approve=()=>e.win.ZZWeb.confirmBatteryFavorite(id,token);
+ assert.equal(approve(),false);
+ e.win.ZZWeb.setContext({...context,allowBatteryConfirmation:true});
+ assert.equal(e.win.ZZWeb.confirmBatteryFavorite(id,{...token,step:1}),false);
+ e.win.location=new URL(url.replace(id,'999'));
+ assert.equal(approve(),false);
+ e.win.location=new URL(url);
+ title.textContent='其他收藏提醒';
+ assert.equal(approve(),false);
+ title.textContent='平台焕新电池';
+ buttons.push({...confirm});
+ assert.equal(approve(),false);
+ buttons.pop();
+ assert.equal(approve(),true);
+ assert.equal(approve(),false);
+ assert.equal(confirmClicks,1);
+ assert.equal(e.clicks(),1);
+});
+
+test('an already dispatched favorite request suppresses a second click',async()=>{
+ const e=environment();
+ const id=fixture.id,token={run:'scan',step:2};
+ await e.win.fetch('https://app.zhuanzhuan.com/zzopen/waresshow/baseInfo?infoId='+id);await settle();
+ e.win.ZZWeb.setContext({id,token,allowFavorite:true,allowBatteryConfirmation:true});
+ assert.equal(e.win.ZZWeb.favorite(id).ok,true);
+ const request=e.win.fetch('https://app.zhuanzhuan.com/zz/transfer/addLoveInfo?infoId='+id);
+ assert.equal(e.win.ZZWeb.confirmBatteryFavorite(id,token),'requestStarted');
+ assert.equal(e.clicks(),1);
+ await request;
+});

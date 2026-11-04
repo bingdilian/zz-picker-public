@@ -9,7 +9,19 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
 - (NSString *)startWithConfig:(NSDictionary *)config allowUnverified:(BOOL)allow;
 - (void)checkTaskBudget;
 - (void)pump;
+- (void)handleFavoriteConfirmation:(NSDictionary *)message webView:(WKWebView *)web;
 - (NSString *)saveConfigurationDraft:(NSDictionary *)draft;
+@end
+@interface ZZBatteryTestWebView : WKWebView
+@property(nonatomic,strong) NSURL *testURL;
+@property(nonatomic) NSUInteger confirmations;
+@end
+@implementation ZZBatteryTestWebView
+- (NSURL *)URL {return self.testURL;}
+- (void)evaluateJavaScript:(NSString *)script completionHandler:(void (^)(id,NSError *))completion {
+    if([script containsString:@"confirmBatteryFavorite("])self.confirmations++;
+    if(completion)completion(@YES,nil);
+}
 @end
 @interface ZZLabelViewButton : UIView @end
 @implementation ZZLabelViewButton @end
@@ -313,6 +325,34 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         CHECK(onlyCollected,@"collected filter showed an unconfirmed favorite");
         [historyRun invokeMethod:@"stop" withArguments:@[]];
         [picker setValue:nil forKey:@"action"];
+
+        for(NSNumber *optIn in @[@NO,@YES]){
+            NSString *ident=optIn.boolValue?@"790":@"789";
+            JSValue *batteryRun=[js evaluateScript:[NSString stringWithFormat:@"(function(){var r=new ZZCore.Run({model:'iPhone 15 Pro Max',autoFavorite:true,autoConfirmBattery:%@,continueAfterHit:true});r.start();r.current={id:'%@',title:'换新电池商品'};r.currentProduct={id:r.current.id,title:r.current.title};r._issue('favorite',{id:r.current.id,allowBatteryConfirmation:r.config.autoConfirmBattery});return r;})()",optIn.boolValue?@"true":@"false",ident]];
+            [picker setValue:batteryRun forKey:@"run"];
+            NSDictionary *action=[[batteryRun invokeMethod:@"next" withArguments:@[]]toDictionary];
+            [picker setValue:action forKey:@"action"];
+            [gate invokeMethod:@"begin" withArguments:@[ident,action[@"token"]]];
+            ZZBatteryTestWebView *web=[[ZZBatteryTestWebView alloc]initWithFrame:CGRectZero configuration:[WKWebViewConfiguration new]];
+            web.testURL=[NSURL URLWithString:[@"https://m.zhuanzhuan.com/u/streamline_detail/new-goods-detail?infoId=" stringByAppendingString:ident]];
+            picker.detailWeb=web;
+            NSDictionary *event=@{@"id":ident,@"token":action[@"token"]};
+            [picker handleFavoriteConfirmation:event webView:web];
+            [picker handleFavoriteConfirmation:event webView:web];
+            CHECK(web.confirmations==(optIn.boolValue?1:0),@"native battery confirmation ignored opt-in or clicked twice");
+            CHECK([[picker snapshot][@"counts"][@"favorited"]integerValue]==0,@"confirmation click counted as collected without readback");
+            if(optIn.boolValue){
+                [picker observeJSON:@{@"respCode":@0} metadata:@{@"path":@"/zz/transfer/addLoveInfo",@"id":ident,@"token":action[@"token"]} webView:web];
+                NSDictionary *verifyToken=[picker snapshot][@"token"];
+                CHECK([[picker snapshot][@"phase"]isEqual:@"verify"]&&[[picker snapshot][@"counts"][@"favorited"]integerValue]==0,@"successful favorite response skipped independent readback");
+                [picker observeJSON:@{@"respCode":@0,@"respData":@{@"collected":@YES}} metadata:@{@"path":@"/zzopen/waresshow/baseInfo",@"id":ident,@"token":verifyToken} webView:web];
+                CHECK([[picker snapshot][@"counts"][@"favorited"]integerValue]==1,@"verified battery favorite was not counted");
+            }else CHECK([[[picker snapshot][@"results"]firstObject][@"status"]isEqual:@"favoriteManual"],@"opt-out did not keep manual confirmation");
+            CHECK([[picker snapshot][@"phase"]isEqual:@"back"]&&![[gate invokeMethod:@"pending" withArguments:@[]]toBool],@"battery favorite left the scan blocked");
+            [batteryRun invokeMethod:@"stop" withArguments:@[]];
+            [picker setValue:nil forKey:@"action"];
+            picker.detailWeb=nil;
+        }
 
     }@catch(NSException *exception){[failures addObject:exception.reason?:@"native exception"];}
     NSString *folder=NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES).firstObject;NSDictionary *result=@{@"checks":@(checks),@"failures":failures,@"snapshot":ZZPicker.shared.snapshot,@"logs":ZZPicker.shared.logs,@"metadata":self.lastMetadata?:@{}};[[NSJSONSerialization dataWithJSONObject:result options:NSJSONWritingPrettyPrinted error:nil]writeToFile:[folder stringByAppendingPathComponent:@"ui-result.json"]atomically:YES];

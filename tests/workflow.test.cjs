@@ -188,3 +188,16 @@ test('continue mode honors the item limit after a favorite settles',()=>{
  assert.equal(r.snapshot().budgetExceeded,true);assert.equal(r.next(),null);
  assert.equal(r.snapshot().results[0].status,'favoriteManual');
 });
+
+test('battery confirmation is opt-in and confirmation alone never counts as collected',()=>{
+ assert.equal(C.validateConfig(config()).config.autoConfirmBattery,false);
+ assert.equal(C.validateConfig(config({autoConfirmBattery:'true'})).ok,false);
+ const r=started({autoFavorite:true,autoConfirmBattery:true,continueAfterHit:true});
+ let a=r.next();r.detail(product(),a.token);a=r.next();
+ assert.equal(r.snapshot().counts.favorited,0);
+ r.favoriteResult(f.favorite,a.token);a=r.next();
+ assert.equal(a.type,'verify');assert.equal(r.snapshot().counts.favorited,0);
+ r.verified(true,a.token);
+ assert.equal(r.snapshot().counts.favorited,1);
+ assert.equal(r.next().type,'back');
+});

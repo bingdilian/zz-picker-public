@@ -21,6 +21,7 @@
 @property(nonatomic) BOOL historyWriteFailed;
 @property(nonatomic,strong) NSHashTable<WKWebView *> *webViews;
 @property(nonatomic,strong) NSDictionary *action;
+@property(nonatomic,copy) NSDictionary *batteryConfirmationToken;
 @property(nonatomic,strong) NSMutableDictionary *detailParts;
 @property(nonatomic,strong) NSTimer *entryTimer;
 @property(nonatomic,strong) UIButton *entryButton;
@@ -182,7 +183,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     return YES;
 }
 - (void)returnedFromDetails {[self.run invokeMethod:@"viewed" withArguments:@[]];if([[self.run invokeMethod:@"recheckFavorite" withArguments:@[]]toBool]){[self favoriteEvent:@"manualReturnReadback" id:[self snapshot][@"current"][@"id"] value:nil];[self pump];}[self attachEntry];[self changed];[self showTask];}
-- (NSDictionary *)context {@synchronized(self){if(!self.action)return @{};return @{@"token":self.action[@"token"],@"id":self.action[@"id"]?:self.action[@"item"][@"id"]?:@"",@"allowFavorite":@([self.action[@"type"]isEqual:@"favorite"]),@"filterCommit":(self.filterDriver.willCommit||self.filterDriver.complete)?@YES:@NO};}}
+- (NSDictionary *)context {@synchronized(self){if(!self.action)return @{};return @{@"token":self.action[@"token"],@"id":self.action[@"id"]?:self.action[@"item"][@"id"]?:@"",@"allowFavorite":@([self.action[@"type"]isEqual:@"favorite"]),@"allowBatteryConfirmation":self.action[@"allowBatteryConfirmation"]?:@NO,@"filterCommit":(self.filterDriver.willCommit||self.filterDriver.complete)?@YES:@NO};}}
 - (void)checkTaskBudget {
     if(!self.run)return;BOOL exceeded=[[self snapshot][@"budgetExceeded"]boolValue];
     BOOL paused=[[self.run invokeMethod:@"checkBudget" withArguments:@[]]toBool];
@@ -307,21 +308,50 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     NSString *source=[NSString stringWithFormat:@"/*ZZPickerV1*/window.__zzPickerInitialContext=%@;\n%@",[self jsonString:[self context]],ZZSource(ZZWebBytes,ZZWebLength)];[ucc addUserScript:[[WKUserScript alloc]initWithSource:source injectionTime:WKUserScriptInjectionTimeAtDocumentStart forMainFrameOnly:YES]];
     if(web.tag!=ZZPickerOwnViewTag&&!self.borrowedConfiguration){self.borrowedConfiguration=[web.configuration copy];self.borrowedUserAgent=web.customUserAgent;}
 }
+- (void)recordManualFavoriteConfirmation:(NSDictionary *)message {
+    if([[self.run invokeMethod:@"favoriteNeedsConfirmation" withArguments:@[message[@"token"]]]toBool]){
+        [self favoriteEvent:@"confirmationRequired" id:message[@"id"] value:nil];
+        [self pump];
+    }
+}
+- (void)handleFavoriteConfirmation:(NSDictionary *)message webView:(WKWebView *)web {
+    if(!web||web!=self.detailWeb||![message[@"id"]isKindOfClass:NSString.class]||![message[@"token"]isKindOfClass:NSDictionary.class])return;
+    NSDictionary *snapshot=[self snapshot];
+    NSString *ident=message[@"id"];
+    NSDictionary *token=message[@"token"];
+    if(![snapshot[@"current"]isKindOfClass:NSDictionary.class]||![snapshot[@"current"][@"id"]isEqual:ident])return;
+    if(![[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[web.URL.absoluteString?:@"",ident]]toBool])return;
+    if([self.batteryConfirmationToken isEqual:token])return;
+    NSDictionary *action=self.action;
+    if(![action[@"type"]isEqual:@"favorite"]||![action[@"token"]isEqual:token]||![self isCurrent:action]||
+       ![snapshot[@"config"][@"autoFavorite"]boolValue]||![snapshot[@"config"][@"autoConfirmBattery"]boolValue]){
+        [self recordManualFavoriteConfirmation:message];
+        return;
+    }
+    self.batteryConfirmationToken=token;
+    [self favoriteEvent:@"batteryConfirmationAttempt" id:ident value:nil];
+    NSString *script=[NSString stringWithFormat:@"window.ZZWeb&&window.ZZWeb.confirmBatteryFavorite(%@,%@)",[self jsonString:ident],[self jsonString:token]];
+    [web evaluateJavaScript:script completionHandler:^(id result,NSError *error){
+        if(!error&&[result isEqual:@"requestStarted"])return;
+        if([result isKindOfClass:NSNumber.class]&&[result boolValue]&&!error){
+            [self favoriteEvent:@"batteryConfirmationClicked" id:ident value:nil];
+            return;
+        }
+        if(![self isCurrent:action])return;
+        if(error){
+            [self favoriteEvent:@"batteryConfirmationScriptError" id:ident value:@(error.code)];
+            [self.run invokeMethod:@"failed" withArguments:@[@"确认操作未能核实，改为读取收藏状态",token]];
+            [self pump];
+        }else{
+            [self recordManualFavoriteConfirmation:message];
+        }
+    }];
+}
 - (void)userContentController:(WKUserContentController *)controller didReceiveScriptMessage:(WKScriptMessage *)message {
     (void)controller;if(![message.body isKindOfClass:NSDictionary.class])return;WKWebView *web=message.webView;WKFrameInfo *frame=message.frameInfo;
     if(!ZZTrustedBridgeFrame(web.URL,frame.request.URL,frame.securityOrigin.protocol,frame.securityOrigin.host,frame.mainFrame)||(frame.securityOrigin.port!=0&&frame.securityOrigin.port!=443))return;NSDictionary *m=message.body;
     if([m[@"kind"]isEqual:@"ready"]){[web evaluateJavaScript:[NSString stringWithFormat:@"window.ZZWeb&&window.ZZWeb.setContext(%@)",[self jsonString:[self context]]]completionHandler:nil];return;}
-    if([m[@"kind"]isEqual:@"favoriteConfirmation"]){
-        if(web!=self.detailWeb||![m[@"id"]isKindOfClass:NSString.class]||![m[@"token"]isKindOfClass:NSDictionary.class])return;
-        NSDictionary *snapshot=[self snapshot];
-        if(![snapshot[@"current"]isKindOfClass:NSDictionary.class]||![snapshot[@"current"][@"id"]isEqual:m[@"id"]])return;
-        if(![[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[web.URL.absoluteString?:@"",m[@"id"]]]toBool])return;
-        if([[self.run invokeMethod:@"favoriteNeedsConfirmation" withArguments:@[m[@"token"]]]toBool]){
-            [self favoriteEvent:@"confirmationRequired" id:m[@"id"] value:nil];
-            [self pump];
-        }
-        return;
-    }
+    if([m[@"kind"]isEqual:@"favoriteConfirmation"]){[self handleFavoriteConfirmation:m webView:web];return;}
     if([m[@"kind"]isEqual:@"request"])[self observeRequest:m];else if([m[@"kind"]isEqual:@"failure"])[self observeFailure:m];else if([m[@"kind"]isEqual:@"response"]&&[m[@"data"]isKindOfClass:NSDictionary.class])[self observeJSON:m[@"data"]metadata:m webView:web];
 }
 @end
