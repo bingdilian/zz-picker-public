@@ -35,10 +35,221 @@
     if (v === false || v === 0 || v === '0' || v === 'false') return false;
     return null;
   }
+  var wearTypes = ['划痕', '磕碰', '掉漆/磨损'];
+  var batteryTypes = ['未检出更换', '平台更换', '其他已更换'];
+  var inspectionGroups = [
+    {key:'appearance', label:'外观', name:'外观检测', modes:{any:'不限',wear:'允许常见痕迹，其余全部通过',selected:'排除指定外观'},
+     groups:[['外壳',['外壳外观痕迹','脱胶/缝隙','刻字/图','机身弯曲','摄像头/闪光灯外观','卡托']],
+             ['屏幕',['屏幕外观痕迹','支架破损','内屏掉漆/划伤','屏幕/其它','屏幕凸点（褶皱）']]]},
+    {key:'battery', label:'电池情况', types:batteryTypes},
+    {key:'screen', label:'屏幕', name:'屏幕检测', modes:{any:'不限',all:'显示和触控全部通过',selected:'排除指定问题'},
+     groups:[['屏幕显示',['亮点/亮斑','泛红/泛黄','色斑','坏点','其它','图文残影']],['屏幕触控',['触控']]]},
+    {key:'functions', label:'设备功能', name:'设备功能', modes:{any:'不限',all:'全部通过',selected:'指定功能必须通过'},
+     groups:[['按键',['电源键','音量键','其它按键']],['生物识别',['面部识别']],['传感器',['距离感应','光线感应','重力感应','指南针']],
+             ['无线',['无线功能']],['声音与振动',['振动','听筒','底部麦克风','扬声器']],['充电',['无线充电','有线充电']],
+             ['通话功能',['SIM 卡1','SIM 卡2']],['摄像头',['闪光灯功能','前置摄像头','后置摄像头']],['其它状况',['开机情况','ID 锁','系统情况','激活还原情况']]]},
+    {key:'repair', label:'维修浸液', name:'维修浸液', modes:{any:'不限',all:'全部通过',selected:'指定情况'},
+     groups:[['维修浸液',['后摄维修情况','零件维修/更换','主板','屏幕','机身','前摄维修情况','浸液痕迹情况']],['拆机情况',['拆机情况']]]}
+  ];
+  inspectionGroups[0].wearTypes = wearTypes;
+  var inspectionOrder = ['repair','screen','functions','battery','appearance'];
+  var wearPaths = ['外壳›外壳外观痕迹','屏幕›屏幕外观痕迹'];
+  var dismantlePath = '拆机情况›拆机情况';
+  var na = /^(不适用|无此功能|无此配置)$/;
+  function inspectionDefaults() {
+    return {battery:{types:['未检出更换']},screen:{mode:'all'},functions:{mode:'all'},repair:{mode:'all'}};
+  }
+  function inspectionSelections(value, choices, label, errors) {
+    if(value===undefined)return [];
+    if(!Array.isArray(value)||value.some(function(x){return choices.indexOf(x)<0;})){
+      errors.push(label+'选项无效');return [];
+    }
+    return choices.filter(function(x){return value.indexOf(x)>=0;});
+  }
+  function inspectionLimit(value, min, max, label, errors) {
+    if(value===undefined||value==='')return '';
+    if((typeof value!=='string'&&typeof value!=='number')||!/^\d+$/.test(String(value))||!Number.isSafeInteger(Number(value))||Number(value)<min||Number(value)>max){
+      errors.push(label+'格式无效');return '';
+    }
+    return String(Number(value));
+  }
+  function validateInspection(input) {
+    var errors=[], filters={};
+    if(input!==undefined&&(!input||typeof input!=='object'||Array.isArray(input)))errors.push('验机报告筛选格式无效');
+    input=input||{};
+    inspectionGroups.forEach(function(section){
+      var value=input[section.key];
+      if(value!==undefined&&(!value||typeof value!=='object'||Array.isArray(value)))errors.push(section.label+'设置无效');
+      value=value||{};
+      if(section.key==='battery'){
+        filters.battery={types:inspectionSelections(value.types,batteryTypes,'电池更换情况',errors),
+          minHealth:inspectionLimit(value.minHealth,1,100,'最低电池健康值',errors),
+          maxCycles:inspectionLimit(value.maxCycles,0,Number.MAX_SAFE_INTEGER,'最多充电次数',errors)};
+        return;
+      }
+      var mode=value.mode===undefined?'any':value.mode;
+      if(typeof mode!=='string'||!Object.prototype.hasOwnProperty.call(section.modes,mode))errors.push(section.label+'筛选方式无效');
+      var paths=[];
+      section.groups.forEach(function(g){g[1].forEach(function(item){paths.push(g[0]+'›'+item);});});
+      var rule={mode:mode,items:inspectionSelections(value.items,paths,section.label,errors)};
+      if(section.key==='appearance')rule.wear=inspectionSelections(value.wear,wearTypes,'外观痕迹',errors);
+      if(section.key==='repair'){
+        if(value.allowBatteryOnly!==undefined&&typeof value.allowBatteryOnly!=='boolean')errors.push('允许仅平台拆机换电必须是开关值');
+        rule.allowBatteryOnly=value.allowBatteryOnly===true;
+      }
+      filters[section.key]=rule;
+    });
+    return {filters:filters,errors:errors};
+  }
+  function inspectionSummary(filters) {
+    var rules=validateInspection(filters).filters, summary={};
+    inspectionGroups.forEach(function(section){
+      var r=rules[section.key], parts=[];
+      if(section.key==='battery'){
+        if(r.types.length)parts.push(r.types.join('／'));
+        if(r.minHealth!=='')parts.push('健康值 ≥ '+r.minHealth+'%');
+        if(r.maxCycles!=='')parts.push('充电 ≤ '+r.maxCycles+' 次');
+      }else if(r.mode==='selected'){
+        var count=r.items.length+(r.wear||[]).length;
+        if(count)parts.push('已选 '+count+' 项');
+        if(r.allowBatteryOnly&&r.items.indexOf(dismantlePath)>=0)parts.push('允许仅平台换电');
+      }else if(r.mode!=='any'&&section.modes[r.mode])parts.push(section.modes[r.mode]);
+      if(parts.length)summary[section.key]=parts.join(' · ');
+    });
+    return summary;
+  }
+  function inspectionLeaf(value) {
+    var list=Array.isArray(value)?value:[];
+    if(!list.length)return {state:'unknown',texts:[]};
+    var texts=[], flags=[];
+    list.forEach(function(result){
+      var label=result&&typeof result.value==='string'?result.value.trim():'';
+      if(!label){flags.push(null);return;}
+      if(na.test(label)){flags.push('na');return;}
+      texts.push(label);
+      flags.push(bool(result.isNormal));
+    });
+    var unique=flags.filter(function(flag,i){return flags.indexOf(flag)===i;});
+    var flag=unique.length===1?unique[0]:null;
+    return {state:flag==='na'?'na':flag===true?'pass':flag===false?'fail':'unknown',texts:texts};
+  }
+  function inspectionData(report) {
+    var categories={}, params={};
+    (Array.isArray(report.params)?report.params:[]).forEach(function(p){
+      if(p&&['电池健康值','充电次数','电池更换情况'].indexOf(p.key)>=0){
+        (params[p.key]||(params[p.key]=[])).push(typeof p.value==='string'||typeof p.value==='number'?String(p.value).trim():'');
+      }
+    });
+    (Array.isArray(report.reportItem)?report.reportItem:[]).forEach(function(category){
+      if(!category||!inspectionGroups.some(function(s){return s.name===category.name;}))return;
+      if(Object.prototype.hasOwnProperty.call(categories,category.name)){categories[category.name]={complete:false,items:{}};return;}
+      var items=Object.create(null), duplicate=false;
+      function read(n,path){
+        if(!n||typeof n.name!=='string'||!n.name.trim()||n.name.indexOf('›')>=0){duplicate=true;return;}
+        var next=path.concat(n.name.trim());
+        if(Array.isArray(n.children)&&n.children.length){n.children.forEach(function(child){read(child,next);});return;}
+        // The captured repair report includes an empty, zero-count battery subsection.
+        if(!path.length&&n.name==='电池检测'&&!n.values&&n.normalNum===0&&n.abNormalNum===0)return;
+        var key=next.join('›');
+        if(items[key]){items[key]={state:'unknown',texts:[]};duplicate=true;}
+        else items[key]=inspectionLeaf(n.values);
+      }
+      (Array.isArray(category.children)?category.children:[]).forEach(function(n){read(n,[]);});
+      var applicable=Object.keys(items).filter(function(key){return items[key].state!=='na';});
+      var normal=applicable.filter(function(key){return items[key].state==='pass';}).length;
+      var abnormal=applicable.filter(function(key){return items[key].state==='fail';}).length;
+      categories[category.name]={items:items,complete:!duplicate&&applicable.length>0&&
+        normal+abnormal===applicable.length&&category.normalNum===normal&&category.abNormalNum===abnormal};
+    });
+    return {categories:categories,params:params};
+  }
+  function batteryType(value) {
+    if(/^(未检出|未检测到|未发现|无)电池更换$|^未检出更换$/.test(value))return '未检出更换';
+    if(/^平台(?:已)?(?:更换|换新|焕新|换电)/.test(value))return '平台更换';
+    if(/^(?:非平台|第三方)?(?:已)?(?:更换|换过)(?!情况)|^检出更换/.test(value))return '其他已更换';
+    return null;
+  }
+  function healthRange(value) {
+    var m=value.match(/^(\d{1,3})\s*%(?:\s*[-–—~～至]\s*(\d{1,3})\s*%)?$/);
+    if(!m)return null;
+    var low=Number(m[1]), high=m[2]?Number(m[2]):low;
+    return low>0&&low<=high&&high<=100?low+'-'+high:null;
+  }
+  function cycleCount(value) {
+    var m=value.match(/^(\d+)\s*(?:次)?(?:[（(]全新电池[）)])?$/);
+    return m&&Number.isSafeInteger(Number(m[1]))?String(Number(m[1])):null;
+  }
+  function inspectBattery(params, rule, reject, unknown) {
+    function field(key, normalize, evaluate){
+      var v=consistent(params[key]||[],normalize).value;
+      var decision=v===null?null:evaluate(v);
+      if(decision===false)reject.push('电池情况 › '+key+'不符');
+      if(decision===null)unknown.push('电池情况 › '+key+'待确认');
+    }
+    if(rule.types.length)field('电池更换情况',batteryType,function(v){return rule.types.indexOf(v)>=0;});
+    if(rule.minHealth!=='')field('电池健康值',healthRange,function(v){
+      var range=v.split('-').map(Number), min=Number(rule.minHealth);
+      return range[0]>=min?true:range[1]<min?false:null;
+    });
+    if(rule.maxCycles!=='')field('充电次数',cycleCount,function(v){return Number(v)<=Number(rule.maxCycles);});
+  }
+  function repairDecision(row, allowBatteryOnly) {
+    if(row.state==='unknown')return 'unknown';
+    var text=row.texts.join('、');
+    if(row.texts.length===1&&text==='平台已拆机换电')return allowBatteryOnly?'pass':'fail';
+    if(row.state==='fail')return 'fail';
+    if(row.texts.every(function(v){return /^(正常|无|未拆机|无拆机|未检出(?:维修(?:更换)?|更换|浸液(?:痕迹)?|拆机(?:痕迹)?)|无(?:维修|更换|浸液|拆机)(?:记录|痕迹)?)$/.test(v);}))return 'pass';
+    if(row.texts.some(function(v){return !/^(?:未|无)/.test(v)&&/维修|更换|浸液|拆机/.test(v);}))return 'fail';
+    return 'unknown';
+  }
+  function wearTokens(row) {
+    return row.texts.join('、').replace(/／/g,'/').split(/[、，,；;]+/).map(function(t){return t.trim();});
+  }
+  function commonWear(token) {
+    if(/^(轻微|明显|多处|少量)?(?:掉漆(?:\/磨损)?|磨损)$/.test(token))return '掉漆/磨损';
+    if(/^(轻微|明显|多处|少量)?划痕$/.test(token))return '划痕';
+    if(/^(轻微|明显|多处|少量)?磕碰$/.test(token))return '磕碰';
+    return null;
+  }
+  function inspectReport(report, filters, reject, unknown) {
+    report=report||{categories:{},params:{}};
+    inspectionOrder.forEach(function(key){
+      var rule=filters[key], section=inspectionGroups.find(function(g){return g.key===key;});
+      if(key==='battery'){inspectBattery(report.params,rule,reject,unknown);return;}
+      if(rule.mode==='any')return;
+      var category=report.categories[section.name], items=category?category.items:{};
+      var selected=rule.mode==='selected';
+      var paths=selected?rule.items:Object.keys(items);
+      var exclusionOnly=key==='appearance'&&selected&&rule.wear.length>0;
+      if(exclusionOnly)paths=paths.concat(wearPaths.filter(function(path){return paths.indexOf(path)<0;}));
+      paths.forEach(function(path){
+        var row=items[path];
+        if(row&&row.state==='na')return;
+        var label=section.label+' › '+path.replace(/›/g,' › '), result=row?row.state:'unknown';
+        if(row&&key==='repair'){
+          var allow=selected&&rule.allowBatteryOnly&&path===dismantlePath;
+          result=repairDecision(row,allow);
+          if(result==='fail'&&row.texts.length===1&&['平台已拆机换电','屏幕外玻璃更换'].indexOf(row.texts[0])>=0)
+            label+='（'+row.texts[0]+'）';
+        }
+        if(row&&key==='appearance'&&wearPaths.indexOf(path)>=0&&result!=='unknown'){
+          var tokens=wearTokens(row);
+          if(rule.mode==='wear'&&result==='fail'&&tokens.every(commonWear))result='pass';
+          if(exclusionOnly&&tokens.some(function(t){return rule.wear.indexOf(commonWear(t))>=0;}))result='fail';
+          else if(exclusionOnly&&rule.items.indexOf(path)<0)result='pass';
+        }
+        if(result==='fail')reject.push(label+'不符');
+        if(result==='unknown')unknown.push(label+'待确认');
+      });
+      if(!selected&&(!category||!category.complete))unknown.push(section.label+' › 报告项目完整性待确认');
+    });
+  }
   function validateConfig(input) {
     input = input || {};
     var c = { model: String(input.model || '').trim(), minIOS: String(input.minIOS || '').trim(), maxIOS: String(input.maxIOS || '').trim(), channels: input.channels===undefined?['国行']:input.channels, conditions: input.conditions || [], capacities: input.capacities || [], autoFavorite: input.autoFavorite === true, autoConfirmBattery: input.autoConfirmBattery === true, continueAfterHit: input.continueAfterHit === true };
-    var errors = [];
+    var inspection = validateInspection(input.reportFilters);
+    c.reportFilters = inspection.filters;
+    var errors = inspection.errors;
     [['maxProducts',100,2000,'商品数量'],['maxMinutes',15,120,'运行分钟数']].forEach(function(limit){
       var value=input[limit[0]];
       if(value===undefined)value=limit[1];
@@ -100,7 +311,7 @@
       modelId:base && base.modelId!=null?String(base.modelId):String(item.pgModelId||''), ios:os.value,channel:channel.value,channelConflict:channel.conflict,capacity:cap.value,
       condition:base && base.infoLv && base.infoLv.level || null,
       functionGrade:report.dtGrade && report.dtGrade.function && report.dtGrade.function.name || null,
-      collected:base?bool(base.collected):null,soldOut:base?bool(base.isSoldOut):null,issues:issues};
+      collected:base?bool(base.collected):null,soldOut:base?bool(base.isSoldOut):null,issues:issues,inspection:inspectionData(report)};
   }
   function matchProduct(p, config) {
     var v=validateConfig(config);if(!v.ok)return {status:'unknown',reasons:v.errors};
@@ -114,7 +325,8 @@
     if(c.capacities.length){if(!p.capacity)unknown.push('容量缺失');else if(c.capacities.indexOf(normalizeCapacity(p.capacity))<0)reject.push('容量不符');}
     if(c.conditions.length){if(!p.condition)unknown.push('成色缺失');else if(c.conditions.indexOf(p.condition)<0)reject.push('成色不符');}
     (p.issues||[]).forEach(function(x){unknown.push(x);});
-    return {status:reject.length?'reject':unknown.length?'unknown':'match', reasons:reject.length?reject:unknown};
+    inspectReport(p.inspection,c.reportFilters,reject,unknown);
+    return {status:reject.length?'reject':unknown.length?'unknown':'match', reasons:reject.concat(unknown)};
   }
   function filterOptions(input) {
     var out={conditions:[],capacities:[]},seen={};
@@ -310,7 +522,7 @@
   Run.prototype.viewed=function(){if(this.state==='paused'&&this.phase==='hit'){this.checkBudget();if(!this.budgetExceeded)this.note='已返回列表，点击继续处理下一件';}};
   Run.prototype.stop=function(){if(this.state==='stopped')return;this._freeze();if(['favorite','verify'].indexOf(this.phase)>=0&&this.currentProduct){var row=this.recheckRow||this.pendingMatch;if(!this.recheckRow){if(!row)row=this._record(this.currentProduct,'favoriteUnknown',[]);Object.assign(row,{status:'favoriteUnknown',reasons:['任务已结束，已发出的收藏结果待确认']});this.counts.favoriteUnknown++;}this.recheckRow=this.pendingMatch=null;this.stoppedFavorite={id:this.current.id,token:clone(this.intent.token),row:row};}this.state='stopped';this.phase='stopped';this.step++;this.action=null;this.note='已结束，结果与已完成收藏已保留';};
   Run.prototype.settleStopped=function(path,envelope,id,token){var p=this.stoppedFavorite;if(this.state!=='stopped'||!p||p.id!==id||!token||this._requestKey(p.token)!==this._requestKey(token))return false;if(path==='baseInfo'){if(collectedState(envelope)===true){if(p.row.status==='favoriteManual')this.counts.favoriteManual--;else this.counts.favoriteUnknown--;p.row.status='favorited';p.row.reasons=['结束后收到独立收藏状态确认'];if(this.hit&&this.hit.id===id)Object.assign(this.hit,{status:p.row.status,reasons:p.row.reasons});if(this.currentProduct&&this.currentProduct.id===id)this.currentProduct.collected=true;this.counts.favorited++;}this.stoppedFavorite=null;return true;}if(path==='addLoveInfo'){p.row.reasons=['结束后收到收藏响应，状态仍待核验'];return true;}return false;};
-  Run.prototype.snapshot=function(){var pending=this.requests&&this.requests[this.page]||{};return clone({state:this.state,phase:this.phase,config:this.config,page:this.page,token:{run:this.run,step:this.step},current:this.current?{id:this.current.id,title:this.current.title}:null,hit:this.hit||null,favoriteSettlement:this.favoriteSettlement||null,candidate:this.currentProduct||null,counts:this.counts,results:this.results.filter(function(r){return ['match','already','favorited','favoriteUnknown','favoritePending','favoriteManual','favoriteFailed'].indexOf(r.status)>=0;}),allResults:this.results,note:this.note||'',waitingResponse:Object.keys(pending).length>0,options:this.options||{conditions:[],capacities:[]},budgetExceeded:this.budgetExceeded,limitReason:this.limitReason,elapsedMs:this._tick()});};
+  Run.prototype.snapshot=function(){var pending=this.requests&&this.requests[this.page]||{};return clone({state:this.state,phase:this.phase,config:this.config,page:this.page,token:{run:this.run,step:this.step},current:this.current?{id:this.current.id,title:this.current.title}:null,hit:this.hit||null,favoriteSettlement:this.favoriteSettlement||null,candidate:this.currentProduct?Object.assign({},this.currentProduct,{inspection:undefined}):null,counts:this.counts,results:this.results.filter(function(r){return ['match','already','favorited','favoriteUnknown','favoritePending','favoriteManual','favoriteFailed'].indexOf(r.status)>=0;}),allResults:this.results,note:this.note||'',waitingResponse:Object.keys(pending).length>0,options:this.options||{conditions:[],capacities:[]},budgetExceeded:this.budgetExceeded,limitReason:this.limitReason,elapsedMs:this._tick()});};
   function diagnosticSnapshot(snapshot,includeDetails){
     var out={},keys=['state','phase','config','page','counts','note','waitingResponse','options','budgetExceeded','limitReason','elapsedMs'];
     if(includeDetails===true)keys=keys.concat(['current','candidate','hit','results']);
@@ -325,7 +537,7 @@
     var settlement=['favorite','verify'].indexOf(phase)>=0,canResume=['paused','hit'].indexOf(state)>=0&&(!pending||settlement)&&(!s.budgetExceeded||settlement);
     return {kind:kind,title:title,canResume:canResume,canView:!!s.hit&&['hit','returned'].indexOf(kind)>=0,canEnd:['idle','stopped','finished'].indexOf(state)<0,canSettings:['idle','paused','hit','stopped','finished'].indexOf(state)>=0,message:pending&&kind!=='favorite'?'上一笔收藏仍在处理中，可查看结果或结束后续任务':s.note||''};
   }
-  var api={channelChoices:channelChoices,diagnosticSnapshot:diagnosticSnapshot,presentation:presentation,criteriaMatches:criteriaMatches,PageWait:PageWait,MutationGate:MutationGate,collectedState:collectedState,version:version,compareVersions:compareVersions,normalizeCapacity:normalizeCapacity,normalizeId:normalizeId,validateConfig:validateConfig,normalizeProduct:normalizeProduct,matchProduct:matchProduct,filterOptions:filterOptions,safeProductURL:safeProductURL,Run:Run};
+  var api={inspectionGroups:inspectionGroups,validateInspection:validateInspection,inspectionDefaults:inspectionDefaults,inspectionSummary:inspectionSummary,channelChoices:channelChoices,diagnosticSnapshot:diagnosticSnapshot,presentation:presentation,criteriaMatches:criteriaMatches,PageWait:PageWait,MutationGate:MutationGate,collectedState:collectedState,version:version,compareVersions:compareVersions,normalizeCapacity:normalizeCapacity,normalizeId:normalizeId,validateConfig:validateConfig,normalizeProduct:normalizeProduct,matchProduct:matchProduct,filterOptions:filterOptions,safeProductURL:safeProductURL,Run:Run};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   root.ZZCore=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

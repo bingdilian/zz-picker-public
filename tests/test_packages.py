@@ -34,14 +34,14 @@ class Packages(unittest.TestCase):
     def test_debs_have_separate_layout_architecture_and_only_target_app(self):
         for variant, arch, prefix in [('rootless', 'iphoneos-arm64', 'var/jb/'), ('roothide', 'iphoneos-arm64e', '')]:
             with self.subTest(variant=variant):
-                path = DIST / f'ZZPicker-1.2.0-beta11-{variant}.deb'
+                path = DIST / f'ZZPicker-1.2.0-beta12-{variant}.deb'
                 self.assertTrue(path.exists(), 'Package not built: ' + path.name)
                 members = ar_members(path)
                 self.assertEqual(members['debian-binary'], b'2.0\n')
                 with tarfile.open(fileobj=io.BytesIO(members['control.tar.gz'])) as t:
                     control = t.extractfile('control').read().decode()
                 self.assertIn('Architecture: ' + arch + '\n', control)
-                self.assertIn('Version: 1.2.0~beta11\n', control)
+                self.assertIn('Version: 1.2.0~beta12\n', control)
                 with tarfile.open(fileobj=io.BytesIO(members['data.tar.gz'])) as t:
                     folder = prefix + 'Library/MobileSubstrate/DynamicLibraries/'
                     self.assertEqual(set(t.getnames()), {folder + 'ZZPicker.dylib', folder + 'ZZPicker.plist'})
@@ -52,13 +52,13 @@ class Packages(unittest.TestCase):
                         self.assertTrue(entry.isfile())
                         self.assertNotIn('..', Path(entry.name).parts)
     def test_trollfools_zip_contains_self_contained_library(self):
-        path = DIST / 'ZZPicker-1.2.0-beta11-trollfools.zip'
+        path = DIST / 'ZZPicker-1.2.0-beta12-trollfools.zip'
         self.assertTrue(path.exists(), 'TrollFools package not built')
         with zipfile.ZipFile(path) as z:
             self.assertEqual(z.namelist(), ['ZZPicker.dylib'])
-            self.assertEqual(z.read('ZZPicker.dylib'), (DIST / 'ZZPicker-1.2.0-beta11-trollfools.dylib').read_bytes())
+            self.assertEqual(z.read('ZZPicker.dylib'), (DIST / 'ZZPicker-1.2.0-beta12-trollfools.dylib').read_bytes())
     def test_macho_is_ios_arm64_and_only_links_system_libraries(self):
-        path = DIST / 'ZZPicker-1.2.0-beta11-trollfools.dylib'
+        path = DIST / 'ZZPicker-1.2.0-beta12-trollfools.dylib'
         self.assertTrue(path.exists(), 'Library not built')
         arch = subprocess.check_output(['xcrun', 'lipo', '-archs', str(path)], text=True).strip()
         self.assertEqual(arch, 'arm64')
@@ -78,7 +78,7 @@ class Packages(unittest.TestCase):
         subprocess.run(['codesign', '--verify', '--strict', str(path)], check=True, capture_output=True)
 
     def test_source_archive_matches_project_and_excludes_capture_secrets(self):
-        with zipfile.ZipFile(DIST / 'ZZPicker-1.2.0-beta11-source.zip') as z:
+        with zipfile.ZipFile(DIST / 'ZZPicker-1.2.0-beta12-source.zip') as z:
             self.assertIn('zz-picker/LICENSE', z.namelist())
             self.assertEqual(z.read('zz-picker/LICENSE'), (ROOT / 'LICENSE').read_bytes())
             self.assertTrue(all(n.startswith('zz-picker/') for n in z.namelist()))
@@ -110,7 +110,7 @@ class Packages(unittest.TestCase):
 
     def test_release_bundle_is_complete_and_independently_checkable(self):
         import hashlib
-        release = DIST / 'ZZPicker-1.2.0-beta11-release.zip'
+        release = DIST / 'ZZPicker-1.2.0-beta12-release.zip'
         digest, filename = (DIST / (release.name + '.sha256')).read_text().strip().split('  ', 1)
         self.assertEqual(filename, release.name)
         self.assertEqual(hashlib.sha256(release.read_bytes()).hexdigest(), digest)

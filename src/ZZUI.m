@@ -121,17 +121,24 @@ static NSString *ZZResultStatus(NSString *status){return @{@"match":@"命中",@"
 - (void)acknowledgeHelp {[NSUserDefaults.standardUserDefaults setBool:YES forKey:@"com.codex.zzpicker.helpSeen"];self.tableView.tableHeaderView=nil;}
 - (void)updated:(NSNotification *)note {(void)note;for(UITextField *field in self.fields.allValues)if(field.isFirstResponder)return;[self.tableView reloadData];}
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {(void)tableView;return 8;}
-- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {(void)tableView;if(section==0)return 3;if(section<4)return 1;if(section==4)return 4;if(section==6)return 3;if(section==5)return 2;return MIN([ZZPicker.shared.snapshot[@"results"]count],50);}
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {(void)tableView;if(section==0)return 3;if(section==3)return 2;if(section<3)return 1;if(section==4)return 4;if(section==6)return 4;if(section==5)return 2;return MIN([ZZPicker.shared.snapshot[@"results"]count],50);}
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {(void)tableView;return @[[NSString stringWithFormat:@"来自%@ · 新任务",self.surface],@"购买渠道 · 可多选",@"存储容量 · 可多选",@"外观成色 · 可多选",@"插件与收藏",@"扫描限制",@"开始、记录与诊断",@"命中商品 · 仅全部条件符合"][section];}
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {(void)tableView;if(section==0)return @"iOS指待售手机，包含上下限；留空不限。";if(section==1)return @"默认国行；全部不选表示不限。限定渠道时，以验机报告为准；渠道未知或冲突不自动收藏。";if(section==2)return @"成色或容量全部不选表示不限；会自动应用转转筛选并核验请求。";if(section==4)return @"停用立即结束任务与采集，保留设置及结果。已发出的收藏不能撤回。自动确认默认关闭，开启自动收藏后才能使用。开启自动确认即允许插件替你接受平台换新电池提醒。打开“命中后继续扫描”可保存商品并扫描下一件。";if(section==5)return @"件数1–2000，分钟1–120。按已处理商品计数，暂停和查看命中详情不计时；到限后暂停，已有收藏先完成核验。";if(section==7)return @"基础诊断不含商品明细；需要排除记录时请在预览中主动开启明细。";return nil;}
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    (void)tableView;if(indexPath.section>=1&&indexPath.section<=3){NSUInteger count=indexPath.section==1?ZZPicker.shared.purchaseChannels.count:indexPath.section==2?self.capacities.count:4;CGFloat rows=ceil(count/4.0);return 12+rows*28+MAX(0,rows-1)*6;}if(indexPath.section==4)return 58;return UITableViewAutomaticDimension;
+    (void)tableView;if(indexPath.section>=1&&indexPath.section<=3&&indexPath.row==0){NSUInteger count=indexPath.section==1?ZZPicker.shared.purchaseChannels.count:indexPath.section==2?self.capacities.count:4;CGFloat rows=ceil(count/4.0);return 12+rows*28+MAX(0,rows-1)*6;}if(indexPath.section==4)return 58;return UITableViewAutomaticDimension;
 }
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)path {
     UITableViewCell *cell=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];cell.textLabel.numberOfLines=0;cell.detailTextLabel.numberOfLines=0;cell.selectionStyle=UITableViewCellSelectionStyleNone;
     NSInteger section=path.section,row=path.row;
     if(section==0){NSString *key=@[@"model",@"minIOS",@"maxIOS"][row];cell.textLabel.text=@[@"手机型号",@"最低 iOS",@"最高 iOS"][row];UITextField *field=[[UITextField alloc]initWithFrame:CGRectMake(0,0,MIN(230,tableView.bounds.size.width*0.56),38)];field.text=self.draft[key];field.placeholder=row==0?@"iPhone 15 Pro Max":@"不限";field.accessibilityIdentifier=key;field.textAlignment=NSTextAlignmentRight;field.autocorrectionType=UITextAutocorrectionTypeNo;field.autocapitalizationType=UITextAutocapitalizationTypeNone;field.keyboardType=row==0?UIKeyboardTypeDefault:UIKeyboardTypeNumbersAndPunctuation;[field addTarget:self action:@selector(fieldChanged:) forControlEvents:UIControlEventEditingChanged];cell.accessoryView=field;self.fields[key]=field;}
-    else if(section>=1&&section<=3){
+    else if(section==3&&row==1){
+        cell.textLabel.text=@"验机报告筛选";
+        NSUInteger count=[ZZPicker.shared inspectionSummary:self.draft[@"reportFilters"]?:@{}].count;
+        cell.detailTextLabel.text=count?[NSString stringWithFormat:@"已设置 %lu 类",(unsigned long)count]:@"不限";
+        cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
+        cell.selectionStyle=UITableViewCellSelectionStyleDefault;
+        cell.accessibilityIdentifier=@"inspectionFilters";
+    }else if(section>=1&&section<=3){
         NSArray *labels=section==1?ZZPicker.shared.purchaseChannels:section==2?self.capacities:@[@"99新",@"95新",@"9成新",@"8成新"];NSString *key=section==1?@"channels":section==2?@"capacities":@"conditions";
         UIStackView *rows=[UIStackView new];rows.axis=UILayoutConstraintAxisVertical;rows.distribution=UIStackViewDistributionFillEqually;rows.spacing=6;rows.translatesAutoresizingMaskIntoConstraints=NO;[cell.contentView addSubview:rows];[NSLayoutConstraint activateConstraints:@[[rows.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:12],[rows.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-12],[rows.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:6],[rows.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-6]]];
         for(NSUInteger offset=0;offset<labels.count;offset+=4){UIStackView *line=[UIStackView new];line.axis=UILayoutConstraintAxisHorizontal;line.distribution=UIStackViewDistributionFillEqually;line.spacing=6;[rows addArrangedSubview:line];
@@ -140,7 +147,7 @@ static NSString *ZZResultStatus(NSString *status){return @{@"match":@"命中",@"
         }
     }else if(section==4){cell.textLabel.text=@[@"启用插件",@"自动加入收藏",@"命中后继续扫描",@"允许自动确认换新电池提醒"][row];UISwitch *toggle=[UISwitch new];toggle.accessibilityIdentifier=@[@"pluginEnabled",@"autoFavorite",@"continueAfterHit",@"autoConfirmBattery"][row];toggle.on=row==0?ZZPicker.shared.enabled:[self.draft[toggle.accessibilityIdentifier]boolValue];[toggle addTarget:self action:row==0?@selector(enabledChanged:):@selector(scanOptionChanged:) forControlEvents:UIControlEventValueChanged];if(row==3)toggle.enabled=[self.draft[@"autoFavorite"]boolValue];cell.accessoryView=toggle;}
     else if(section==5){NSString *key=row==0?@"maxProducts":@"maxMinutes";cell.textLabel.text=row==0?@"最多处理件数":@"最长运行（分钟）";UITextField *field=[[UITextField alloc]initWithFrame:CGRectMake(0,0,90,38)];field.text=[self.draft[key]?:@(row==0?100:15) description];field.accessibilityIdentifier=key;field.textAlignment=NSTextAlignmentRight;field.keyboardType=UIKeyboardTypeNumberPad;[field addTarget:self action:@selector(fieldChanged:) forControlEvents:UIControlEventEditingChanged];self.fields[key]=field;cell.accessoryView=field;}
-    else if(section==6){cell.selectionStyle=UITableViewCellSelectionStyleDefault;if(row==0){cell.textLabel.text=[self.surface isEqual:@"商品列表"]?@"应用条件并重新搜索":@"开始搜索并扫描";cell.textLabel.textAlignment=NSTextAlignmentCenter;cell.textLabel.textColor=UIColor.whiteColor;cell.backgroundColor=ZZRed();}else{cell.textLabel.text=row==1?@"预览与分享诊断":@"命中记录";if(row==2){cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;cell.accessibilityIdentifier=@"hitHistory";}cell.textLabel.textColor=UIColor.systemBlueColor;}}
+    else if(section==6){cell.selectionStyle=UITableViewCellSelectionStyleDefault;if(row==0){cell.textLabel.text=[self.surface isEqual:@"商品列表"]?@"应用条件并重新搜索":@"开始搜索并扫描";cell.textLabel.textAlignment=NSTextAlignmentCenter;cell.textLabel.textColor=UIColor.whiteColor;cell.backgroundColor=ZZRed();}else{cell.textLabel.text=@[@"", @"预览与分享诊断", @"命中记录", @"筛选核验记录"][row];if(row>=2){cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;cell.accessibilityIdentifier=row==2?@"hitHistory":@"inspectionResults";}cell.textLabel.textColor=UIColor.systemBlueColor;}}
     else{NSArray *results=ZZPicker.shared.snapshot[@"results"];NSDictionary *r=results[results.count-1-row];cell.textLabel.text=r[@"title"];cell.detailTextLabel.text=[NSString stringWithFormat:@"%@ · iOS %@ · %@ · %@G · %@\n%@",ZZResultStatus(r[@"status"]),r[@"ios"],[r[@"channel"]length]?r[@"channel"]:@"渠道未知",r[@"capacity"],r[@"condition"],[r[@"reasons"]componentsJoinedByString:@"；"]];}
     if([cell.accessoryView isKindOfClass:UITextField.class]){
         UITextField *field=(id)cell.accessoryView;field.delegate=self;field.returnKeyType=UIReturnKeyDone;
@@ -156,10 +163,22 @@ static NSString *ZZResultStatus(NSString *status){return @{@"match":@"命中",@"
 - (void)enabledChanged:(UISwitch *)toggle {[self dismissKeyboard];[ZZPicker.shared setEnabled:toggle.on];}
 - (void)toggleChoice:(UIButton *)button {NSArray *parts=[button.accessibilityIdentifier componentsSeparatedByString:@"|"];NSString *key=parts[0],*value=parts[1];NSMutableArray *values=[self.draft[key]mutableCopy];if([values containsObject:value])[values removeObject:value];else[values addObject:value];self.draft[key]=values;[self.view endEditing:YES];[self.tableView reloadData];}
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
-    [tableView deselectRowAtIndexPath:path animated:YES];if(path.section!=6)return;[self.view endEditing:YES];
+    [tableView deselectRowAtIndexPath:path animated:YES];
+    if(path.section==3&&path.row==1){
+        [self dismissKeyboard];
+        __weak ZZSettingsController *settings=self;
+        UIViewController *inspection=ZZInspectionSettings(self.draft[@"reportFilters"]?:@{},^(NSDictionary *filters){
+            settings.draft[@"reportFilters"]=filters;
+            [settings.tableView reloadRowsAtIndexPaths:@[path] withRowAnimation:UITableViewRowAnimationNone];
+        });
+        [self.navigationController pushViewController:inspection animated:YES];
+        return;
+    }
+    if(path.section!=6)return;[self.view endEditing:YES];
     if(path.row==0){if(ZZPicker.shared.enabled&&![ZZPicker.shared.environment[@"verifiedAppVersion"]boolValue]){NSDictionary *e=ZZPicker.shared.environment;UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"转转版本尚未验证" message:[NSString stringWithFormat:@"当前 %@，适配基线 %@。页面与接口可能不同，建议先关闭自动收藏并进行少量测试。",e[@"appVersion"],e[@"expectedAppVersion"]]preferredStyle:UIAlertControllerStyleAlert];alert.view.tag=ZZPickerOwnViewTag;[alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];[alert addAction:[UIAlertAction actionWithTitle:@"仅本次测试" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){(void)action;[self startAllowUnverified:YES];}]];[self presentViewController:alert animated:YES completion:nil];}else[self startAllowUnverified:NO];}
     else if(path.row==1)ZZPresentDiagnostics();
-    else [self.navigationController pushViewController:[[ZZHitHistoryController alloc]initWithStyle:UITableViewStyleInsetGrouped] animated:YES];
+    else if(path.row==2)[self.navigationController pushViewController:[[ZZHitHistoryController alloc]initWithStyle:UITableViewStyleInsetGrouped] animated:YES];
+    else [self.navigationController pushViewController:ZZInspectionResults(ZZPicker.shared.snapshot[@"allResults"]?:@[]) animated:YES];
 }
 - (void)startAllowUnverified:(BOOL)allow {NSString *error=[ZZPicker.shared startWithConfig:self.draft allowUnverified:allow];if(error){UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"检查设置" message:error preferredStyle:UIAlertControllerStyleAlert];alert.view.tag=ZZPickerOwnViewTag;[alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];[self presentViewController:alert animated:YES completion:nil];}}
 @end

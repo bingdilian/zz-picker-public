@@ -132,6 +132,14 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         CHECK(([migrated.config[@"channels"]isEqual:@[@"国行"]]&&[migrated.config[@"maxIOS"]isEqual:@"27"]&&![migrated.config[@"autoFavorite"]boolValue]),@"adding default channel changed existing iOS criteria or favorite preference");
         NSMutableDictionary *unrestricted=[legacy mutableCopy];unrestricted[@"channels"]=@[];[defaults setObject:unrestricted forKey:@"com.codex.zzpicker.config.v2"];CHECK([[[ZZPicker new]config][@"channels"]isEqual:@[]],@"explicit unrestricted channel selection was overwritten on reload");
         if(savedConfig)[defaults setObject:savedConfig forKey:@"com.codex.zzpicker.config.v2"];else[defaults removeObjectForKey:@"com.codex.zzpicker.config.v2"];
+        CHECK([migrated inspectionSummary:migrated.config[@"reportFilters"]].count==0,@"legacy settings enabled report restrictions");
+        UITableViewController *inspection=(id)ZZInspectionSettings(@{@"screen":@{@"mode":@"selected",@"items":@[@"屏幕显示›坏点"]}},^(NSDictionary *filters){(void)filters;});
+        [inspection loadViewIfNeeded];
+        CHECK([inspection numberOfSectionsInTableView:inspection.tableView]==5,@"inspection UI did not provide five categories");
+        CHECK([[inspection tableView:inspection.tableView titleForHeaderInSection:0] hasPrefix:@"外观"]&&
+              [[inspection tableView:inspection.tableView titleForHeaderInSection:4] hasPrefix:@"维修浸液"],@"inspection UI did not follow report order");
+        UITableViewCell *selectedDefect=[inspection tableView:inspection.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:4 inSection:2]];
+        CHECK([selectedDefect.textLabel.text isEqual:@"坏点"]&&selectedDefect.accessoryType==UITableViewCellAccessoryCheckmark,@"inspection UI lost selected screen path");
         [picker setValue:migrated.config forKey:@"config"];UITableViewController *settings=[(UITableViewController *)[NSClassFromString(@"ZZSettingsController")alloc]initWithStyle:UITableViewStyleInsetGrouped];[settings loadViewIfNeeded];
         UITableViewCell *channelCell=[settings.tableView.dataSource tableView:settings.tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1]];
         UIButton *mainland=(id)FindTestView(channelCell,@"channels|国行"),*us=(id)FindTestView(channelCell,@"channels|美版");
@@ -202,6 +210,7 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         NSDictionary *savedV1=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v1"];
         [defaults removeObjectForKey:@"com.codex.zzpicker.config.v2"];[defaults removeObjectForKey:@"com.codex.zzpicker.config.v1"];
         ZZPicker *fresh=[ZZPicker new];CHECK(![fresh.config[@"autoFavorite"]boolValue]&&[fresh.config[@"maxProducts"]integerValue]==100&&[fresh.config[@"maxMinutes"]integerValue]==15,@"fresh public defaults must be manual favorite with finite limits");
+        CHECK([fresh inspectionSummary:fresh.config[@"reportFilters"]].count==4,@"new configuration lacks four default report restrictions");
         [defaults setObject:legacy forKey:@"com.codex.zzpicker.config.v1"];CHECK(![[[ZZPicker new]config][@"autoFavorite"]boolValue],@"v1 migration enabled favorite without consent");
         NSMutableDictionary *optedIn=[legacy mutableCopy];optedIn[@"autoFavorite"]=@YES;[defaults setObject:optedIn forKey:@"com.codex.zzpicker.config.v2"];CHECK([[[ZZPicker new]config][@"autoFavorite"]boolValue],@"public update erased explicit favorite preference");
         if(savedConfig)[defaults setObject:savedConfig forKey:@"com.codex.zzpicker.config.v2"];else[defaults removeObjectForKey:@"com.codex.zzpicker.config.v2"];

@@ -41,7 +41,11 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
         _js[@"ZZNow"]=^double{return NSProcessInfo.processInfo.systemUptime*1000;};
         [_js evaluateScript:ZZSource(ZZCoreBytes,ZZCoreLength)];_mutations=[_js[@"ZZCore"][@"MutationGate"]constructWithArguments:@[]];
         NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;NSDictionary *saved=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v2"];
-        if(!saved)saved=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v1"]?:@{@"model":@"iPhone 15 Pro Max",@"minIOS":@"",@"maxIOS":@"",@"conditions":@[],@"capacities":@[]};
+        if(!saved)saved=[defaults dictionaryForKey:@"com.codex.zzpicker.config.v1"];
+        if(!saved){
+            NSDictionary *inspection=[[_js[@"ZZCore"] invokeMethod:@"inspectionDefaults" withArguments:@[]]toDictionary]?:@{};
+            saved=@{@"model":@"iPhone 15 Pro Max",@"minIOS":@"",@"maxIOS":@"",@"conditions":@[],@"capacities":@[],@"reportFilters":inspection};
+        }
         NSDictionary *checked=[[_js[@"ZZCore"]invokeMethod:@"validateConfig" withArguments:@[saved]]toDictionary];
         _config=[checked[@"ok"]boolValue]?checked[@"config"]:@{@"model":@"iPhone 15 Pro Max",@"minIOS":@"",@"maxIOS":@"",@"channels":@[@"国行"],@"conditions":@[],@"capacities":@[],@"autoFavorite":@NO,@"maxProducts":@100,@"maxMinutes":@15};
     }return self;
@@ -72,6 +76,13 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 - (NSDictionary *)presentation {return [[self.js[@"ZZCore"]invokeMethod:@"presentation" withArguments:@[[self snapshot],@([[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool])]]toDictionary];}
 - (NSString *)normalizedCapacity:(NSString *)label {JSValue *v=[self.js[@"ZZCore"]invokeMethod:@"normalizeCapacity" withArguments:@[label]];return v.isNull||v.isUndefined?nil:v.toString;}
 - (NSArray<NSString *> *)purchaseChannels {return [self.js[@"ZZCore"][@"channelChoices"]toArray]?:@[];}
+- (NSArray<NSDictionary *> *)inspectionGroups {return [self.js[@"ZZCore"][@"inspectionGroups"]toArray]?:@[];}
+- (NSDictionary *)inspectionSummary:(NSDictionary *)filters {
+    return [[self.js[@"ZZCore"]invokeMethod:@"inspectionSummary" withArguments:@[filters]]toDictionary]?:@{};
+}
+- (NSDictionary *)validateInspectionDraft:(NSDictionary *)filters {
+    return [[self.js[@"ZZCore"]invokeMethod:@"validateInspection" withArguments:@[filters]]toDictionary]?:@{};
+}
 - (BOOL)isEnabled {id value=[NSUserDefaults.standardUserDefaults objectForKey:@"com.codex.zzpicker.enabled"];return !value||[value boolValue];}
 - (void)setEnabled:(BOOL)enabled {
     [NSUserDefaults.standardUserDefaults setBool:enabled forKey:@"com.codex.zzpicker.enabled"];

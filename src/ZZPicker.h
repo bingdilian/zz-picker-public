@@ -5,7 +5,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 #define ZZPickerOwnViewTag 0x5A5A5001
-#define ZZPickerVersion @"1.2.0-beta11"
+#define ZZPickerVersion @"1.2.0-beta12"
 
 @interface ZZPicker : NSObject <WKScriptMessageHandler>
 + (instancetype)shared;
@@ -22,6 +22,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSDictionary *)presentation;
 - (nullable NSString *)normalizedCapacity:(NSString *)label;
 - (NSArray<NSString *> *)purchaseChannels;
+- (NSArray<NSDictionary *> *)inspectionGroups;
+- (NSDictionary *)inspectionSummary:(NSDictionary *)filters;
+- (NSDictionary *)validateInspectionDraft:(NSDictionary *)filters;
 - (nullable NSString *)saveConfigurationDraft:(NSDictionary *)draft;
 - (nullable NSString *)startWithConfig:(NSDictionary *)config;
 - (nullable NSString *)startWithConfig:(NSDictionary *)config allowUnverified:(BOOL)allow;
@@ -58,6 +61,8 @@ FOUNDATION_EXPORT BOOL ZZActivateText(NSString *label, BOOL prefix, BOOL topOnly
 FOUNDATION_EXPORT NSString *ZZSearchSurface(void);
 FOUNDATION_EXPORT NSDictionary *ZZSearchDiagnostics(void);
 FOUNDATION_EXPORT void ZZPresentSettings(void);
+FOUNDATION_EXPORT UIViewController *ZZInspectionSettings(NSDictionary *filters, void (^onApply)(NSDictionary *));
+FOUNDATION_EXPORT UIViewController *ZZInspectionResults(NSArray<NSDictionary *> *rows);
 FOUNDATION_EXPORT void ZZPresentDiagnostics(void);
 FOUNDATION_EXPORT void ZZDismissSettings(void (^completion)(void));
 FOUNDATION_EXPORT BOOL ZZSettingsVisible(void);

@@ -201,3 +201,18 @@ test('an already dispatched favorite request suppresses a second click',async()=
  assert.equal(e.clicks(),1);
  await request;
 });
+
+test('bridges only inspection fields from report leaves and battery parameters',()=>{
+ const e=environment(), x=new e.win.XMLHttpRequest(), more=structuredClone(fixture.more);
+ const report=more.respData.report;
+ report.params.push({key:'电池健康值',value:'100%',tracking:'private battery metadata'});
+ report.reportItem=[{name:'屏幕检测',normalNum:1,abNormalNum:0,metadata:'private report metadata',
+  children:[{name:'屏幕触控',children:[{name:'触控',values:[{value:'正常',isNormal:1,photo:'private photo'}]}]}]}];
+ x.open('GET','https://app.zhuanzhuan.com/zzopen/waresshow/moreInfo?infoId='+fixture.id);
+ x.responseType='json';x.response=more;x.send();x.emit();
+ const forwarded=e.messages.find(m=>m.kind==='response').data.respData.report;
+ assert.deepEqual(forwarded.params.find(p=>p.key==='电池健康值'),{key:'电池健康值',value:'100%'});
+ assert.deepEqual(forwarded.reportItem[0].children[0].children[0].values,[{value:'正常',isNormal:1}]);
+ assert.equal(forwarded.reportItem[0].normalNum,1);
+ assert.doesNotMatch(JSON.stringify(forwarded),/private/);
+});

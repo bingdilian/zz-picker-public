@@ -12,6 +12,21 @@
   if(!x||typeof x!=='object')return x;
   var r=pick(x,['text','key','value','cmd','style']);if(x.child)r.child=filter(x.child);return r;
  }
+ function reportNodes(nodes,depth){
+  if(!Array.isArray(nodes)||depth>5||nodes.length>200)return [];
+  return nodes.map(function(node){
+   if(!node||typeof node.name!=='string'||node.name.length>80)return null;
+   var clean={name:node.name};
+   ['normalNum','abNormalNum'].forEach(function(key){if(Number.isInteger(node[key]))clean[key]=node[key];});
+   if(Array.isArray(node.children))clean.children=reportNodes(node.children,depth+1);
+   if(Array.isArray(node.values)&&node.values.length<=20)clean.values=node.values.map(function(v){
+    if(!v||typeof v.value!=='string'||v.value.length>150)return null;
+    var flag=v.isNormal;
+    return {value:v.value,isNormal:typeof flag==='boolean'||[0,1,'0','1','true','false'].indexOf(flag)>=0?flag:null};
+   });
+   return clean;
+  });
+ }
  function sanitize(path,j){
   var r={respCode:j&&j.respCode},d=j&&j.respData||{};
   if(String(r.respCode)!=='0')return r;
@@ -21,9 +36,10 @@
   else if(path.indexOf('/moreInfo')>=0){
    var report=d.report;
    if(!report||typeof report!=='object'||Array.isArray(report)||!Object.keys(report).length){r.respData={};return r;}
+   var reportKeys=['系统版本','购买渠道','存储容量','电池健康值','充电次数','电池更换情况'];
    var detail=report.reportParam&&report.reportParam.paramDetail||[];
    var bars=report.reportParam&&report.reportParam.paramBars||[];
-   r.respData={report:{title:report.title,params:(Array.isArray(report.params)?report.params:[]).filter(function(p){return p&&['系统版本','购买渠道','存储容量'].indexOf(p.key)>=0;}).map(function(p){return pick(p,['key','value']);}),reportParam:{paramBars:(Array.isArray(bars)?bars:[]).filter(function(p){return p&&p.paramName==='购买渠道';}).map(function(p){return pick(p,['paramName','paramValue']);}),paramDetail:(Array.isArray(detail)?detail:[]).map(function(g){return {paramInfo:(Array.isArray(g.paramInfo)?g.paramInfo:[]).filter(function(p){return p&&['系统版本','购买渠道','存储容量'].indexOf(p.paramName)>=0;}).map(function(p){return pick(p,['paramName','paramValue']);})};})},dtGrade:{function:pick(report.dtGrade&&report.dtGrade.function,['name'])}}};
+   r.respData={report:{title:report.title,params:(Array.isArray(report.params)?report.params:[]).filter(function(p){return p&&reportKeys.indexOf(p.key)>=0&&(typeof p.value==='string'&&p.value.length<=150||typeof p.value==='number');}).map(function(p){return pick(p,['key','value']);}),reportParam:{paramBars:(Array.isArray(bars)?bars:[]).filter(function(p){return p&&p.paramName==='购买渠道';}).map(function(p){return pick(p,['paramName','paramValue']);}),paramDetail:(Array.isArray(detail)?detail:[]).map(function(g){return {paramInfo:(Array.isArray(g.paramInfo)?g.paramInfo:[]).filter(function(p){return p&&['系统版本','购买渠道','存储容量'].indexOf(p.paramName)>=0;}).map(function(p){return pick(p,['paramName','paramValue']);})};})},dtGrade:{function:pick(report.dtGrade&&report.dtGrade.function,['name'])},reportItem:reportNodes(Array.isArray(report.reportItem)?report.reportItem.filter(function(n){return n&&['外观检测','屏幕检测','设备功能','维修浸液'].indexOf(n.name)>=0;}):[],0)}};
   }else r.respData={};
   return r;
  }
