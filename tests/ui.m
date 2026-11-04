@@ -291,6 +291,29 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         }else CHECK(NO,@"settings entry drag handler is missing");
         [[entryPicker valueForKey:@"entryTimer"]invalidate];[entryButton removeFromSuperview];for(NSString *key in @[@"manualTap",@"manualPan"]){UIGestureRecognizer *g=[entryPicker valueForKey:key];[g.view removeGestureRecognizer:g];}if(savedPosition)[defaults setObject:savedPosition forKey:positionKey];else[defaults removeObjectForKey:positionKey];
 
+        JSValue *historyRun=[js evaluateScript:@"(function(){var r=new ZZCore.Run({model:'iPhone 15 Pro Max',autoFavorite:true,continueAfterHit:true});r.start();r.current={id:'456',title:'连续扫描测试商品',jumpUrl:'https://m.zhuanzhuan.com/u/streamline_detail/new-goods-detail?infoId=456&trace=private-test'};r.currentProduct={id:'456',title:r.current.title,ios:'17.0',channel:'国行',capacity:'512',condition:'99新'};r.pendingMatch=r._record(r.currentProduct,'favoritePending',[]);r._issue('favorite',{id:'456'});return r;})()"];
+        [picker setValue:historyRun forKey:@"run"];
+        NSDictionary *historyAction=[[historyRun invokeMethod:@"next" withArguments:@[]]toDictionary];
+        [gate invokeMethod:@"begin" withArguments:@[@"456",historyAction[@"token"]]];
+        [historyRun invokeMethod:@"favoriteNeedsConfirmation" withArguments:@[historyAction[@"token"]]];
+        [picker pump];
+        CHECK(![[gate invokeMethod:@"pending" withArguments:@[]]toBool]&&[[[picker valueForKey:@"action"]objectForKey:@"type"]isEqual:@"back"],@"continuous favorite confirmation did not release the native gate and advance");
+        ZZPicker *reopened=[ZZPicker new];
+        NSDictionary *latest=reopened.hitHistory.firstObject;
+        NSDictionary *savedHit=[latest[@"rows"]firstObject];
+        CHECK([savedHit[@"status"]isEqual:@"favoriteManual"]&&[savedHit[@"id"]isEqual:@"456"],@"reopened picker did not load the saved confirmation record");
+        CHECK([savedHit[@"detailPath"]isEqual:@"https://m.zhuanzhuan.com/u/streamline_detail/new-goods-detail"]&&savedHit[@"jumpUrl"]==nil,@"history stored unneeded product URL parameters");
+        UITableViewController *recordScreen=[(UITableViewController *)[NSClassFromString(@"ZZHitHistoryController")alloc]initWithStyle:UITableViewStyleInsetGrouped];
+        [recordScreen loadViewIfNeeded];[recordScreen viewWillAppear:NO];
+        UISegmentedControl *historyFilter=(UISegmentedControl *)recordScreen.navigationItem.titleView;
+        CHECK(recordScreen.tableView.numberOfSections>0&&[historyFilter.accessibilityIdentifier isEqual:@"hitHistoryFilter"],@"history screen did not render saved results");
+        historyFilter.selectedSegmentIndex=1;[historyFilter sendActionsForControlEvents:UIControlEventValueChanged];
+        NSArray *filtered=[recordScreen valueForKey:@"tasks"];BOOL onlyCollected=YES;
+        for(NSDictionary *task in filtered)for(NSDictionary *row in task[@"rows"])if(![@[@"already",@"favorited"]containsObject:row[@"status"]])onlyCollected=NO;
+        CHECK(onlyCollected,@"collected filter showed an unconfirmed favorite");
+        [historyRun invokeMethod:@"stop" withArguments:@[]];
+        [picker setValue:nil forKey:@"action"];
+
     }@catch(NSException *exception){[failures addObject:exception.reason?:@"native exception"];}
     NSString *folder=NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask,YES).firstObject;NSDictionary *result=@{@"checks":@(checks),@"failures":failures,@"snapshot":ZZPicker.shared.snapshot,@"logs":ZZPicker.shared.logs,@"metadata":self.lastMetadata?:@{}};[[NSJSONSerialization dataWithJSONObject:result options:NSJSONWritingPrettyPrinted error:nil]writeToFile:[folder stringByAppendingPathComponent:@"ui-result.json"]atomically:YES];
 }

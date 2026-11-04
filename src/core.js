@@ -37,7 +37,7 @@
   }
   function validateConfig(input) {
     input = input || {};
-    var c = { model: String(input.model || '').trim(), minIOS: String(input.minIOS || '').trim(), maxIOS: String(input.maxIOS || '').trim(), channels: input.channels===undefined?['国行']:input.channels, conditions: input.conditions || [], capacities: input.capacities || [], autoFavorite: input.autoFavorite === true };
+    var c = { model: String(input.model || '').trim(), minIOS: String(input.minIOS || '').trim(), maxIOS: String(input.maxIOS || '').trim(), channels: input.channels===undefined?['国行']:input.channels, conditions: input.conditions || [], capacities: input.capacities || [], autoFavorite: input.autoFavorite === true, continueAfterHit: input.continueAfterHit === true };
     var errors = [];
     [['maxProducts',100,2000,'商品数量'],['maxMinutes',15,120,'运行分钟数']].forEach(function(limit){
       var value=input[limit[0]];
@@ -51,6 +51,7 @@
     if (c.maxIOS && !version(c.maxIOS)) errors.push('最高版本格式错误，例如 17.0.3');
     if (c.minIOS && c.maxIOS && compareVersions(c.minIOS,c.maxIOS) === 1) errors.push('最低版本不能大于最高版本');
     if (input.autoFavorite !== undefined && typeof input.autoFavorite !== 'boolean') errors.push('自动收藏必须是开关值');
+    if (input.continueAfterHit !== undefined && typeof input.continueAfterHit !== 'boolean') errors.push('命中后继续扫描必须是开关值');
     if (!Array.isArray(c.channels) || c.channels.some(function(x){return channelChoices.indexOf(x)<0;})) errors.push('购买渠道选项无效');
     if (!Array.isArray(c.conditions) || c.conditions.some(function(x){return ['99新','95新','9成新','8成新'].indexOf(x)<0;})) errors.push('成色选项无效');
     if (!Array.isArray(c.capacities) || c.capacities.some(function(x){return !normalizeCapacity(x);})) errors.push('容量选项无效');
@@ -185,7 +186,7 @@
     this.pause(this.note);return true;
   };
   Run.prototype._issue=function(type,extra){this._tick();if(this.activeAt===null)this.activeAt=this.clock();this.phase=type;this.state=type;this.step++;this.note='';this.action=Object.assign({type:type,token:{run:this.run,step:this.step}},extra||{});this.intent=clone(this.action);};
-  Run.prototype.start=function(){this.elapsedMs=0;this.activeAt=null;this.budgetExceeded=false;this.limitReason='';this.run='run-'+Date.now()+'-'+(++serial);this.page=1;this.step=0;this.results=[];this.queue=[];this.seen={};this.loadedSeen={};this.prefetched={};this.requests={};this.current=null;this.currentProduct=null;this.hit=null;this.recheckRow=null;this.filtersConfirmed=false;this.options={conditions:[],capacities:[]};this.counts={loaded:0,processed:0,checked:0,matched:0,unknown:0,rejected:0,already:0,favorited:0,favoriteUnknown:0};this._issue('search',{keyword:this.config.model,page:1});};
+  Run.prototype.start=function(){this.elapsedMs=0;this.activeAt=null;this.budgetExceeded=false;this.limitReason='';this.run='run-'+Date.now()+'-'+(++serial);this.page=1;this.step=0;this.results=[];this.queue=[];this.seen={};this.loadedSeen={};this.prefetched={};this.requests={};this.current=null;this.currentProduct=null;this.hit=null;this.recheckRow=null;this.pendingMatch=null;this.favoriteSettlement=null;this.favoriteIssue='';this.filtersConfirmed=false;this.options={conditions:[],capacities:[]};this.counts={loaded:0,processed:0,checked:0,matched:0,unknown:0,rejected:0,already:0,favorited:0,favoriteUnknown:0,favoriteManual:0,favoriteFailed:0};this._issue('search',{keyword:this.config.model,page:1});};
   Run.prototype.next=function(){if(this.checkBudget()||['paused','hit','stopped','finished'].indexOf(this.state)>=0)return null;var a=this.action;this.action=null;return a?clone(a):null;};
   Run.prototype._accept=function(token,phase){return ['paused','hit','stopped','finished'].indexOf(this.state)<0&&token&&token.run===this.run&&token.step===this.step&&(!phase||this.phase===phase);};
   Run.prototype.updateOptions=function(envelope){var d=data(envelope);if(!d)return;var newer=filterOptions(d.filterResponse||[]),self=this;['conditions','capacities'].forEach(function(k){newer[k].forEach(function(x){if(!self.options[k].some(function(o){return o.value===x.value;}))self.options[k].push(x);});});};
@@ -222,20 +223,39 @@
   };
   Run.prototype._advance=function(){
     if(this.checkBudget())return;
-    this.hit=null;
+    this.hit=null;this.favoriteSettlement=null;this.favoriteIssue='';
     if(this.queue.length){this.current=this.queue.shift();this._issue('open',{item:this.current});}
     else if(this.page>=100){this._freeze();this.state='finished';this.phase='finished';this.action=null;this.note='达到单次100页上限';}
     else{this.page++;this.current=null;this._issue('nextPage',{page:this.page});this._consumeCached();}
   };
   Run.prototype._consumeCached=function(){if(this.prefetched[this.page]){var cached=this.prefetched[this.page];delete this.prefetched[this.page];this.search(cached.envelope,this.page,this.intent.token,cached.selection,cached.filterCommit);}};
-  Run.prototype._record=function(p,status,reasons){var row={id:this.current.id,title:p.title||this.current.title,model:p.model||'',ios:p.ios||'',channel:p.channel||'',capacity:p.capacity||'',condition:p.condition||'',functionGrade:p.functionGrade||'',status:status,reasons:reasons||[]};this.results.push(row);return row;};
-  Run.prototype._hold=function(status,reasons){this._freeze();var row=this.recheckRow;if(row){if(status==='favorited')this.counts.favoriteUnknown--;Object.assign(row,{status:status,reasons:reasons});this.recheckRow=null;}else row=this._record(this.currentProduct,status,reasons);this.hit=Object.assign({},row,{item:clone(this.current)});this.state='hit';this.phase='hit';this.step++;this.action=null;this.note='发现符合全部条件的商品，任务已暂停';this.checkBudget();};
+  Run.prototype._record=function(p,status,reasons){var row={id:this.current.id,title:p.title||this.current.title,model:p.model||'',ios:p.ios||'',channel:p.channel||'',capacity:p.capacity||'',condition:p.condition||'',functionGrade:p.functionGrade||'',status:status,reasons:reasons||[]};if(safeProductURL(this.current.jumpUrl,this.current.id))row.detailPath=this.current.jumpUrl.split('?')[0];this.results.push(row);return row;};
+  Run.prototype._hold=function(status,reasons){
+    var row=this.recheckRow||this.pendingMatch;
+    if(row){
+      if(this.recheckRow&&status==='favorited'){
+        if(row.status==='favoriteUnknown')this.counts.favoriteUnknown--;
+        if(row.status==='favoriteManual')this.counts.favoriteManual--;
+      }
+      Object.assign(row,{status:status,reasons:reasons});
+    }else row=this._record(this.currentProduct,status,reasons);
+    var wasRecheck=!!this.recheckRow;
+    this.recheckRow=this.pendingMatch=null;
+    if(['favorite','verify'].indexOf(this.phase)>=0)this.favoriteSettlement={id:row.id,status:status};
+    if(this.config.continueAfterHit&&!wasRecheck&&this.state!=='paused'&&!this.budgetExceeded){
+      this._issue('back',{id:this.current.id});
+      if(!this.checkBudget())return;
+    }
+    this._freeze();this.hit=Object.assign({},row,{item:clone(this.current)});
+    this.state=this.phase='hit';this.step++;this.action=null;
+    this.note='发现符合全部条件的商品，任务已暂停';this.checkBudget();
+  };
   Run.prototype.detail=function(p,token){
     if(!this._accept(token,'open')||!this.current||p.id!==this.current.id||this.checkBudget())return false;
     this.currentProduct=p;var match=matchProduct(p,this.config);this.counts.processed++;if(match.status!=='unknown')this.counts.checked++;
     if(match.status==='match'){
       this.counts.matched++;
-      if(this.config.autoFavorite&&p.collected===false){this._issue('favorite',{id:p.id});this.checkBudget();return true;}
+      if(this.config.autoFavorite&&p.collected===false){this.pendingMatch=this._record(p,'favoritePending',['等待收藏结果']);this._issue('favorite',{id:p.id});this.checkBudget();return true;}
       if(p.collected===true){this.counts.already++;this._hold('already',['原有收藏，已保留']);}
       else if(this.config.autoFavorite){this.counts.favoriteUnknown++;this._hold('favoriteUnknown',['收藏状态未知，不自动操作']);}
       else this._hold('match',['符合全部条件']);
@@ -243,19 +263,53 @@
     return true;
   };
   Run.prototype._acceptSettlement=function(token,phase){return this._accept(token,phase)||(this.state==='paused'&&this.phase===phase&&this.intent&&token&&this._requestKey(token)===this._requestKey(this.intent.token));};
-  Run.prototype.favoriteResult=function(envelope,token){if(!this._acceptSettlement(token,'favorite'))return false;if(envelope&&String(envelope.respCode)==='0'){if(this.state==='paused')this.note='收藏响应已返回，点击继续核对状态';else this._issue('verify',{id:this.current.id});}else{this.counts.favoriteUnknown++;this._hold('favoriteUnknown',['收藏接口未确认成功']);}return true;};
-  Run.prototype.verified=function(collected,token){if(!this._acceptSettlement(token,'verify'))return false;this.currentProduct.collected=collected===true?true:collected===false?false:null;if(collected===true){this.counts.favorited++;this._hold('favorited',['收藏状态已独立确认']);}else{if(!this.recheckRow)this.counts.favoriteUnknown++;this._hold('favoriteUnknown',['收藏结果待确认，该商品不自动重试；可查看详情后返回核验']);}return true;};
-  Run.prototype.recheckFavorite=function(){if(!this.hit||this.hit.status!=='favoriteUnknown'||this.phase!=='hit'||['hit','paused'].indexOf(this.state)<0)return false;this.recheckRow=this.results.filter(function(row){return row.id===this.hit.id&&row.status==='favoriteUnknown';},this).pop();if(!this.recheckRow)return false;this._issue('verify',{id:this.current.id,item:clone(this.current)});return true;};
+  Run.prototype.favoriteNeedsConfirmation=function(token){
+    if(!this._acceptSettlement(token,'favorite'))return false;
+    this.counts.favoriteManual++;
+    this._hold('favoriteManual',['转转要求再次确认，请打开详情手动收藏']);
+    return true;
+  };
+  Run.prototype.favoriteResult=function(envelope,token){
+    if(!this._acceptSettlement(token,'favorite'))return false;
+    if(envelope&&String(envelope.respCode)==='0'){
+      if(this.state==='paused')this.note='收藏响应已返回，点击继续核对状态';
+      else this._issue('verify',{id:this.current.id});
+    }else{
+      this.counts.favoriteFailed++;
+      this._hold('favoriteFailed',['收藏接口未返回成功']);
+    }
+    return true;
+  };
+  Run.prototype.verified=function(collected,token){
+    if(!this._acceptSettlement(token,'verify'))return false;
+    this.currentProduct.collected=collected===true?true:collected===false?false:null;
+    if(collected===true){
+      this.counts.favorited++;this._hold('favorited',['收藏状态已独立确认']);
+    }else{
+      var status=this.recheckRow?this.recheckRow.status:'favoriteUnknown';
+      if(!this.recheckRow)this.counts.favoriteUnknown++;
+      var reasons=this.favoriteIssue?[this.favoriteIssue]:[];
+      reasons.push(collected===false?'回读显示未收藏，可手动核对':'未能读取收藏状态，可手动核对');
+      this._hold(status,reasons);
+    }
+    return true;
+  };
+  Run.prototype.recheckFavorite=function(){
+    if(!this.hit||['favoriteUnknown','favoriteManual'].indexOf(this.hit.status)<0||this.phase!=='hit'||['hit','paused'].indexOf(this.state)<0)return false;
+    this.recheckRow=this.results.filter(function(row){return row.id===this.hit.id&&row.status===this.hit.status;},this).pop();
+    if(!this.recheckRow)return false;
+    this._issue('verify',{id:this.current.id,item:clone(this.current)});return true;
+  };
   Run.prototype.returned=function(token){if(!this._accept(token,'back'))return false;this._advance();return true;};
   Run.prototype.endOfList=function(token){if(!this._accept(token,'nextPage'))return false;this._freeze();this.state=this.phase='finished';this.step++;this.action=null;this.note='列表已确认没有更多商品';return true;};
-  Run.prototype.failed=function(reason,token){if(!this._accept(token))return false;if(this.phase==='favorite')this._issue('verify',{id:this.current.id});else if(this.phase==='verify')this.verified(null,token);else this.pause(reason);return true;};
+  Run.prototype.failed=function(reason,token){if(!this._accept(token))return false;if(this.phase==='favorite'){this.favoriteIssue=reason;this._issue('verify',{id:this.current.id});}else if(this.phase==='verify')this.verified(null,token);else this.pause(reason);return true;};
   Run.prototype.pause=function(reason){if(['stopped','finished','idle'].indexOf(this.state)>=0)return;this._freeze();this.note=reason||'已暂停';if(this.state!=='paused'){this.state='paused';this.step++;this.action=null;}};
   Run.prototype.resume=function(){this.checkBudget();if(this.budgetExceeded&&!(this.state==='paused'&&['favorite','verify'].indexOf(this.phase)>=0))return;if(this.state==='hit'||(this.state==='paused'&&this.phase==='hit')){this._issue('back',{id:this.current.id});return;}if(this.state!=='paused')return;var i=this.intent;if(!i)return;var type=(this.phase==='favorite'||this.phase==='verify')?'verify':this.phase;var extra=clone(i);delete extra.type;delete extra.token;if(type==='verify'){extra={id:this.current.id};if(this.recheckRow)extra.item=clone(this.current);}this._issue(type,extra);if(type==='search'||type==='nextPage')this._consumeCached();};
   Run.prototype.beginViewing=function(){if((this.state!=='hit'&&this.state!=='paused')||this.phase!=='hit'||!this.hit)return false;this.pause('查看商品，任务保持暂停');return true;};
   Run.prototype.viewed=function(){if(this.state==='paused'&&this.phase==='hit'){this.checkBudget();if(!this.budgetExceeded)this.note='已返回列表，点击继续处理下一件';}};
-  Run.prototype.stop=function(){if(this.state==='stopped')return;this._freeze();if(['favorite','verify'].indexOf(this.phase)>=0&&this.currentProduct){var row=this.recheckRow;if(!row){row=this._record(this.currentProduct,'favoriteUnknown',['任务已结束，已发出的收藏结果待确认']);this.counts.favoriteUnknown++;}this.recheckRow=null;this.stoppedFavorite={id:this.current.id,token:clone(this.intent.token),row:row};}this.state='stopped';this.phase='stopped';this.step++;this.action=null;this.note='已结束，结果与已完成收藏已保留';};
-  Run.prototype.settleStopped=function(path,envelope,id,token){var p=this.stoppedFavorite;if(this.state!=='stopped'||!p||p.id!==id||!token||this._requestKey(p.token)!==this._requestKey(token))return false;if(path==='baseInfo'){if(collectedState(envelope)===true){p.row.status='favorited';p.row.reasons=['结束后收到独立收藏状态确认'];if(this.hit&&this.hit.id===id)Object.assign(this.hit,{status:p.row.status,reasons:p.row.reasons});if(this.currentProduct&&this.currentProduct.id===id)this.currentProduct.collected=true;this.counts.favorited++;this.counts.favoriteUnknown--;}this.stoppedFavorite=null;return true;}if(path==='addLoveInfo'){p.row.reasons=['结束后收到收藏响应，状态仍待核验'];return true;}return false;};
-  Run.prototype.snapshot=function(){var pending=this.requests&&this.requests[this.page]||{};return clone({state:this.state,phase:this.phase,config:this.config,page:this.page,token:{run:this.run,step:this.step},current:this.current?{id:this.current.id,title:this.current.title}:null,hit:this.hit||null,candidate:this.currentProduct||null,counts:this.counts,results:this.results.filter(function(r){return ['match','already','favorited','favoriteUnknown'].indexOf(r.status)>=0;}),allResults:this.results,note:this.note||'',waitingResponse:Object.keys(pending).length>0,options:this.options||{conditions:[],capacities:[]},budgetExceeded:this.budgetExceeded,limitReason:this.limitReason,elapsedMs:this._tick()});};
+  Run.prototype.stop=function(){if(this.state==='stopped')return;this._freeze();if(['favorite','verify'].indexOf(this.phase)>=0&&this.currentProduct){var row=this.recheckRow||this.pendingMatch;if(!this.recheckRow){if(!row)row=this._record(this.currentProduct,'favoriteUnknown',[]);Object.assign(row,{status:'favoriteUnknown',reasons:['任务已结束，已发出的收藏结果待确认']});this.counts.favoriteUnknown++;}this.recheckRow=this.pendingMatch=null;this.stoppedFavorite={id:this.current.id,token:clone(this.intent.token),row:row};}this.state='stopped';this.phase='stopped';this.step++;this.action=null;this.note='已结束，结果与已完成收藏已保留';};
+  Run.prototype.settleStopped=function(path,envelope,id,token){var p=this.stoppedFavorite;if(this.state!=='stopped'||!p||p.id!==id||!token||this._requestKey(p.token)!==this._requestKey(token))return false;if(path==='baseInfo'){if(collectedState(envelope)===true){if(p.row.status==='favoriteManual')this.counts.favoriteManual--;else this.counts.favoriteUnknown--;p.row.status='favorited';p.row.reasons=['结束后收到独立收藏状态确认'];if(this.hit&&this.hit.id===id)Object.assign(this.hit,{status:p.row.status,reasons:p.row.reasons});if(this.currentProduct&&this.currentProduct.id===id)this.currentProduct.collected=true;this.counts.favorited++;}this.stoppedFavorite=null;return true;}if(path==='addLoveInfo'){p.row.reasons=['结束后收到收藏响应，状态仍待核验'];return true;}return false;};
+  Run.prototype.snapshot=function(){var pending=this.requests&&this.requests[this.page]||{};return clone({state:this.state,phase:this.phase,config:this.config,page:this.page,token:{run:this.run,step:this.step},current:this.current?{id:this.current.id,title:this.current.title}:null,hit:this.hit||null,favoriteSettlement:this.favoriteSettlement||null,candidate:this.currentProduct||null,counts:this.counts,results:this.results.filter(function(r){return ['match','already','favorited','favoriteUnknown','favoritePending','favoriteManual','favoriteFailed'].indexOf(r.status)>=0;}),allResults:this.results,note:this.note||'',waitingResponse:Object.keys(pending).length>0,options:this.options||{conditions:[],capacities:[]},budgetExceeded:this.budgetExceeded,limitReason:this.limitReason,elapsedMs:this._tick()});};
   function diagnosticSnapshot(snapshot,includeDetails){
     var out={},keys=['state','phase','config','page','counts','note','waitingResponse','options','budgetExceeded','limitReason','elapsedMs'];
     if(includeDetails===true)keys=keys.concat(['current','candidate','hit','results']);

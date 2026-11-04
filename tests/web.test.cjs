@@ -9,8 +9,8 @@ function environment(options={}){
  const messages=[],callbacks={};let clickCount=0;
  const button={textContent:'收藏',getAttribute:()=>null,getBoundingClientRect:()=>({width:30,height:30,top:740,bottom:770}),click:()=>clickCount++};
  class XHR{constructor(){this.responseType='';this.status=200;this.responseText='';this.listeners={};}open(method,url){this.url=url;}send(){if(options.sendError)throw options.sendError;if(this.onload)this.onload();}addEventListener(k,cb){(this.listeners[k]||(this.listeners[k]=[])).push(cb);}removeEventListener(k,cb){this.listeners[k]=(this.listeners[k]||[]).filter(x=>x!==cb);}emit(k='load'){for(const cb of [...(this.listeners[k]||[])])cb({type:k});}}
- const win={location:new URL(url),innerHeight:800,webkit:{messageHandlers:{zzPicker:{postMessage:m=>messages.push(JSON.parse(JSON.stringify(m)))}}},fetch:options.fetch||(()=>Promise.resolve(new Response(JSON.stringify(fixture.base),{status:200,headers:{'Content-Type':'application/json'}}))),XMLHttpRequest:XHR,getComputedStyle:()=>({display:'block',visibility:'visible'}),__zzPickerInitialContext:{token:{run:'a',step:1},id:fixture.id,allowFavorite:false}};
- const document={querySelectorAll:()=>options.buttons||[button]};
+ const win={MutationObserver:options.MutationObserver,location:new URL(url),innerHeight:800,webkit:{messageHandlers:{zzPicker:{postMessage:m=>messages.push(JSON.parse(JSON.stringify(m)))}}},fetch:options.fetch||(()=>Promise.resolve(new Response(JSON.stringify(fixture.base),{status:200,headers:{'Content-Type':'application/json'}}))),XMLHttpRequest:XHR,getComputedStyle:()=>({display:'block',visibility:'visible'}),__zzPickerInitialContext:{token:{run:'a',step:1},id:fixture.id,allowFavorite:false}};
+ const document={documentElement:{},querySelectorAll:()=>options.buttons||[button]};
  const context=vm.createContext({window:win,document,URL,Promise,JSON,console,setTimeout,clearTimeout});vm.runInContext(code,context);
  return {win,messages,context,button,clicks:()=>clickCount};
 }
@@ -135,4 +135,22 @@ test('report channel crosses the web bridge through params and paramBars without
 test('favorite request-start diagnostics are distinct from a DOM click and exclude unrelated parameters',async()=>{
  const e=environment();await e.win.fetch('https://app.zhuanzhuan.com/zz/transfer/addLoveInfo?infoId='+fixture.id+'&token=private-marker');await settle();
  const start=e.messages.find(m=>m.kind==='request');assert.equal(start.path,'/zz/transfer/addLoveInfo');assert.equal(start.id,fixture.id);assert.equal(JSON.stringify(e.messages).includes('private-marker'),false);
+});
+
+test('visible continue-favorite prompt reports its action token without pressing confirm',async()=>{
+ let changed,disconnected=false,confirmClicks=0;
+ const buttons=[];
+ const e=environment({buttons,MutationObserver:class{
+  constructor(callback){changed=callback;} observe(){} disconnect(){disconnected=true;}
+ }});
+ const confirm={...e.button,textContent:'知道了，继续收藏',getBoundingClientRect:()=>({width:100,height:40,top:700,bottom:740}),click:()=>confirmClicks++};
+ buttons.push(e.button);
+ await e.win.fetch('https://app.zhuanzhuan.com/zzopen/waresshow/baseInfo?infoId='+fixture.id);await settle();
+ e.win.ZZWeb.setContext({token:{run:'a',step:2},id:fixture.id,allowFavorite:true});
+ assert.equal(e.win.ZZWeb.favorite(fixture.id).ok,true);
+ assert.equal(e.messages.some(m=>m.kind==='favoriteConfirmation'),false);
+ buttons.push(confirm);
+ changed();
+ assert.deepEqual(e.messages.find(m=>m.kind==='favoriteConfirmation'),{kind:'favoriteConfirmation',id:fixture.id,token:{run:'a',step:2}});
+ assert.equal(confirmClicks,0);assert.equal(disconnected,true);
 });

@@ -5,7 +5,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 #define ZZPickerOwnViewTag 0x5A5A5001
-#define ZZPickerVersion @"1.2.0-beta9"
+#define ZZPickerVersion @"1.2.0-beta10"
 
 @interface ZZPicker : NSObject <WKScriptMessageHandler>
 + (instancetype)shared;
@@ -33,6 +33,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)showSettings;
 - (void)showTask;
 - (void)viewMatched;
+- (NSArray<NSDictionary *> *)hitHistory;
+- (BOOL)viewRecordedProduct:(NSDictionary *)row;
 - (void)returnedFromDetails;
 - (void)observeFailure:(NSDictionary *)metadata;
 - (void)log:(NSString *)message;
@@ -64,6 +66,10 @@ FOUNDATION_EXPORT void ZZHideTaskPanel(void);
 FOUNDATION_EXPORT WKWebView * _Nullable ZZLoadCollector(NSDictionary *item, BOOL reloadOnly);
 FOUNDATION_EXPORT void ZZStopCollector(void);
 FOUNDATION_EXPORT void ZZShowMatchedProduct(NSDictionary *item);
+void ZZShowRecordedProduct(NSDictionary *item);
+NSURL *ZZHitHistoryDirectory(void);
+BOOL ZZSaveHitTask(NSURL *directory, NSDictionary *task);
+NSArray<NSDictionary *> *ZZReadHitTasks(NSURL *directory);
 FOUNDATION_EXPORT BOOL ZZViewerVisible(void);
 FOUNDATION_EXPORT UIWindow * _Nullable ZZAppWindow(void);
 FOUNDATION_EXPORT UIViewController * _Nullable ZZTopController(void);

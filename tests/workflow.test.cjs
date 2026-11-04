@@ -26,7 +26,7 @@ test('auto favorite completes verification before hit hold; original favorites a
  const q=started({autoFavorite:true});let a=q.next();const p=product();p.collected=true;q.detail(p,a.token);assert.equal(q.snapshot().state,'hit');assert.equal(q.snapshot().counts.already,1);assert.equal(q.snapshot().counts.favorited,0);
 });
 test('favorite failure remains a hit but cannot count as confirmed favorite or auto retry',()=>{
- const r=started({autoFavorite:true});let a=r.next();r.detail(product(),a.token);a=r.next();r.favoriteResult({respCode:403},a.token);assert.equal(r.snapshot().state,'hit');assert.equal(r.snapshot().hit.status,'favoriteUnknown');assert.equal(r.snapshot().counts.favorited,0);assert.equal(r.next(),null);
+ const r=started({autoFavorite:true});let a=r.next();r.detail(product(),a.token);a=r.next();r.favoriteResult({respCode:403},a.token);assert.equal(r.snapshot().state,'hit');assert.equal(r.snapshot().hit.status,'favoriteFailed');assert.equal(r.snapshot().counts.favorited,0);assert.equal(r.next(),null);
 });
 test('viewing and returning from a hit stay paused until explicit resume',()=>{
  const r=hold(started());assert.equal(r.beginViewing(),true);assert.equal(r.snapshot().state,'paused');r.viewed();assert.equal(r.next(),null);assert.match(r.snapshot().note,/返回/);r.resume();assert.equal(r.next().type,'back');
@@ -96,7 +96,7 @@ test('verification received during end confirmation is settled without continuin
  assert.equal(r.verified(true,a.token),true);assert.equal(r.next(),null);r.stop();assert.equal(r.snapshot().counts.favorited,1);assert.equal(r.snapshot().counts.favoriteUnknown,0);assert.equal(r.snapshot().results.length,1);
 });
 test('paused favorite response may settle failure but success cannot issue new verification until resume',()=>{
- for(const ok of [true,false]){const r=started({autoFavorite:true});let a=r.next();r.detail(product(),a.token);a=r.next();r.pause();assert.equal(r.favoriteResult({respCode:ok?0:403},a.token),true);assert.equal(r.next(),null);if(ok){assert.equal(r.snapshot().state,'paused');r.resume();assert.equal(r.next().type,'verify');}else assert.equal(r.snapshot().hit.status,'favoriteUnknown');}
+ for(const ok of [true,false]){const r=started({autoFavorite:true});let a=r.next();r.detail(product(),a.token);a=r.next();r.pause();assert.equal(r.favoriteResult({respCode:ok?0:403},a.token),true);assert.equal(r.next(),null);if(ok){assert.equal(r.snapshot().state,'paused');r.resume();assert.equal(r.next().type,'verify');}else assert.equal(r.snapshot().hit.status,'favoriteFailed');}
 });
 test('unknown reports are processed but not counted as verified conclusions',()=>{
  const r=started(),a=r.next(),p=product();p.ios=null;r.detail(p,a.token);const c=r.snapshot().counts;assert.equal(c.processed,1);assert.equal(c.checked,0);assert.equal(c.unknown,1);
@@ -146,4 +146,45 @@ test('stopping during a read-only favorite recheck preserves one uncertain resul
  r.recheckFavorite();a=r.next();r.stop();assert.equal(r.snapshot().counts.favoriteUnknown,1);assert.equal(r.snapshot().allResults.length,1);
  assert.equal(r.settleStopped('baseInfo',{respCode:0,respData:{collected:true}},f.id,a.token),true);
  assert.equal(r.snapshot().counts.favoriteUnknown,0);assert.equal(r.snapshot().counts.favorited,1);assert.equal(r.snapshot().allResults.length,1);assert.equal(r.snapshot().hit.status,'favorited');assert.equal(r.next(),null);
+});
+
+test('continue mode keeps each hit and advances the scan without a pause',()=>{
+ const r=started({continueAfterHit:true});
+ const a=r.next();r.detail(product(),a.token);
+ assert.equal(r.snapshot().results[0].status,'match');
+ const back=r.next();assert.equal(back.type,'back');r.returned(back.token);
+ assert.equal(r.next().type,'nextPage');
+});
+test('confirmation settles the current hit and lets the next item run',()=>{
+ const r=started({autoFavorite:true,continueAfterHit:true});
+ let a=r.next();r.detail(product(),a.token);a=r.next();
+ assert.equal(r.snapshot().results[0].status,'favoritePending');
+ assert.equal(r.favoriteNeedsConfirmation(a.token),true);
+ const s=r.snapshot();assert.equal(s.results.length,1);
+ assert.equal(s.results[0].status,'favoriteManual');assert.equal(s.counts.favorited,0);
+ assert.equal(s.favoriteSettlement.id,f.id);
+ assert.equal(r.favoriteResult(f.favorite,a.token),false);
+ assert.equal(r.next().type,'back');
+});
+test('readback timeout in continue mode records the hit and resumes',()=>{
+ const r=started({autoFavorite:true,continueAfterHit:true});
+ let a=r.next();r.detail(product(),a.token);a=r.next();
+ r.failed('等待收藏请求超时',a.token);a=r.next();assert.equal(a.type,'verify');
+ r.failed('回读超时',a.token);
+ assert.equal(r.snapshot().results.length,1);
+ assert.equal(r.snapshot().results[0].status,'favoriteUnknown');
+ assert.equal(r.next().type,'back');
+});
+test('confirmation after manual pause keeps the task paused',()=>{
+ const r=started({autoFavorite:true,continueAfterHit:true});
+ let a=r.next();r.detail(product(),a.token);a=r.next();r.pause();
+ assert.equal(r.favoriteNeedsConfirmation(a.token),true);
+ assert.equal(r.next(),null);
+ assert.equal(r.snapshot().hit.status,'favoriteManual');
+});
+test('continue mode honors the item limit after a favorite settles',()=>{
+ const r=started({autoFavorite:true,continueAfterHit:true,maxProducts:1});
+ let a=r.next();r.detail(product(),a.token);a=r.next();r.favoriteNeedsConfirmation(a.token);
+ assert.equal(r.snapshot().budgetExceeded,true);assert.equal(r.next(),null);
+ assert.equal(r.snapshot().results[0].status,'favoriteManual');
 });

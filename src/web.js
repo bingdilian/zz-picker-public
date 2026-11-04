@@ -2,7 +2,7 @@
  'use strict';
  if(w.__zzPickerBridgeV1)return;
  w.__zzPickerBridgeV1=true;
- var context=w.__zzPickerInitialContext||{},baseCache={},mutation=false;
+ var context=w.__zzPickerInitialContext||{},baseCache={},mutation=false,confirmationObserver=null;
  var paths=['/zz/transfer/search','/zz/v2/zzsearchfilteritem/getFilterItemDTO','/zzopen/waresshow/baseInfo','/zzopen/waresshow/moreInfo','/zz/transfer/addLoveInfo'];
  function copy(v){return JSON.parse(JSON.stringify(v));}
  function post(m){try{var h=w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers.zzPicker;if(h)h.postMessage(m);}catch(e){/* Page behavior must survive an unavailable native bridge. */}}
@@ -71,8 +71,37 @@
    var result;try{result=send.apply(this,arguments);}catch(error){cleanup();throw error;}started(info);return result;
   };
  }
+ function stopWatchingConfirmation(){
+  if(confirmationObserver){confirmationObserver.disconnect();confirmationObserver=null;}
+ }
+ function watchConfirmation(id,token){
+  function inspect(){
+   var controls=Array.prototype.slice.call(document.querySelectorAll('button,[role="button"],a,span,div,[aria-label]'));
+   var visible=controls.some(function(el){
+    function isConfirmation(text){return (text||'').replace(/[\s，,]/g,'')==='知道了继续收藏';}
+    if(!isConfirmation(el.textContent)&&!isConfirmation(el.getAttribute('aria-label')))return false;
+    var r=el.getBoundingClientRect();
+    if(!r.width||!r.height||r.top>=w.innerHeight||r.bottom<=0)return false;
+    for(var node=el;node;node=node.parentElement){
+     var style=w.getComputedStyle(node);
+     if(style.display==='none'||style.visibility==='hidden'||style.opacity==='0'||node.getAttribute('aria-hidden')==='true')return false;
+    }
+    return true;
+   });
+   if(visible){stopWatchingConfirmation();post({kind:'favoriteConfirmation',id:id,token:token});}
+  }
+  if(w.MutationObserver&&document.documentElement){
+   confirmationObserver=new w.MutationObserver(inspect);
+   confirmationObserver.observe(document.documentElement,{childList:true,subtree:true,attributes:true,characterData:true});
+  }
+  inspect();
+ }
  w.ZZWeb={
-  setContext:function(value){context=value&&typeof value==='object'?copy(value):{};},
+  setContext:function(value){
+   var next=value&&typeof value==='object'?copy(value):{};
+   if(!next.allowFavorite||next.id!==context.id||!next.token||!context.token||next.token.run!==context.token.run||next.token.step!==context.token.step)stopWatchingConfirmation();
+   context=next;
+  },
   favorite:function(id){
    var u;try{u=new URL(w.location.href);}catch(e){return {ok:false,reason:'页面地址无效'};}
    if(!context.allowFavorite||context.id!==id||u.protocol!=='https:'||u.hostname!=='m.zhuanzhuan.com'||u.port||u.hash||['/u/streamline_detail/new-goods-detail','/u/bm-consign/standard/standard-detail'].indexOf(u.pathname)<0||u.searchParams.getAll('infoId').length!==1||u.searchParams.get('infoId')!==id)return {ok:false,reason:'商品或任务不匹配'};
@@ -86,7 +115,7 @@
    // Nested wrappers can have the same label: click only the deepest visible label.
    candidates=candidates.filter(function(el){return !candidates.some(function(other){return other!==el&&typeof el.contains==='function'&&el.contains(other);});});
    if(candidates.length!==1)return {ok:false,reason:candidates.length?'收藏入口不唯一':'未识别到收藏入口'};
-   mutation=true;candidates[0].click();return {ok:true};
+   mutation=true;candidates[0].click();if(context.token)watchConfirmation(id,copy(context.token));return {ok:true};
   }
  };
  post({kind:'ready'});

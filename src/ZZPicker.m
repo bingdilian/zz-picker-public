@@ -17,6 +17,8 @@
 @property(nonatomic,strong) NSMutableArray *mutableLogs;
 @property(nonatomic,strong) NSMutableArray *searchTrace;
 @property(nonatomic,strong) NSMutableArray *favoriteTrace;
+@property(nonatomic,copy) NSDictionary *savedHitTask;
+@property(nonatomic) BOOL historyWriteFailed;
 @property(nonatomic,strong) NSHashTable<WKWebView *> *webViews;
 @property(nonatomic,strong) NSDictionary *action;
 @property(nonatomic,strong) NSMutableDictionary *detailParts;
@@ -42,6 +44,21 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
         NSDictionary *checked=[[_js[@"ZZCore"]invokeMethod:@"validateConfig" withArguments:@[saved]]toDictionary];
         _config=[checked[@"ok"]boolValue]?checked[@"config"]:@{@"model":@"iPhone 15 Pro Max",@"minIOS":@"",@"maxIOS":@"",@"channels":@[@"国行"],@"conditions":@[],@"capacities":@[],@"autoFavorite":@NO,@"maxProducts":@100,@"maxMinutes":@15};
     }return self;
+}
+- (NSArray<NSDictionary *> *)hitHistory {return ZZReadHitTasks(ZZHitHistoryDirectory());}
+- (void)persistHits:(NSDictionary *)snapshot {
+    NSArray *rows=snapshot[@"results"];
+    NSString *run=snapshot[@"token"][@"run"];
+    if(!rows.count||!run.length)return;
+    NSDictionary *task=@{@"run":run,@"model":snapshot[@"config"][@"model"]?:@"",@"rows":rows};
+    if([task isEqual:self.savedHitTask])return;
+    if(ZZSaveHitTask(ZZHitHistoryDirectory(),task)){
+        self.savedHitTask=task;
+        self.historyWriteFailed=NO;
+    }else if(!self.historyWriteFailed){
+        self.historyWriteFailed=YES;
+        [self log:@"命中记录写入失败，请在本次任务结束前查看结果"];
+    }
 }
 - (NSArray *)logs {return [self.mutableLogs copy];}
 - (void)log:(NSString *)message {
@@ -76,10 +93,22 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
 - (void)favoriteEvent:(NSString *)event id:(NSString *)ident value:(id)value {
     [self.favoriteTrace addObject:@{@"event":event,@"id":ident?:@"",@"value":value?:NSNull.null,@"phase":[self snapshot][@"phase"]?:@"",@"time":@(NSDate.date.timeIntervalSince1970)}];if(self.favoriteTrace.count>40)[self.favoriteTrace removeObjectAtIndex:0];
 }
-- (void)settleFavorite {
-    NSDictionary *s=[self snapshot];id hit=s[@"hit"],current=s[@"current"];NSString *status=[hit isKindOfClass:NSDictionary.class]?hit[@"status"]:nil;BOOL pending=[[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool];
-    if([@[@"favoriteUnknown",@"favorited",@"already"]containsObject:status]&&[s[@"phase"]isEqual:@"hit"]){NSString *ident=hit[@"id"];if(pending||(![status isEqual:@"favoriteUnknown"]&&[[self.mutations invokeMethod:@"blocked" withArguments:@[ident]]toBool])){BOOL confirmed=![status isEqual:@"favoriteUnknown"];if([[self.mutations invokeMethod:@"settle" withArguments:@[ident,s[@"token"],@(confirmed)]]toBool])[self favoriteEvent:@"settled" id:ident value:confirmed?@"collected":@"quarantined"];}}
-    else if(pending&&[s[@"state"]isEqual:@"stopped"]&&[current isKindOfClass:NSDictionary.class]){if([[self.mutations invokeMethod:@"settle" withArguments:@[current[@"id"],s[@"token"],@NO]]toBool])[self favoriteEvent:@"settled" id:current[@"id"] value:@"quarantinedOnStop"];}
+- (void)settleFavorite:(NSDictionary *)snapshot {
+    NSDictionary *settlement=[snapshot[@"favoriteSettlement"]isKindOfClass:NSDictionary.class]?snapshot[@"favoriteSettlement"]:nil;
+    BOOL pending=[[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool];
+    if(settlement){
+        NSString *ident=settlement[@"id"],*status=settlement[@"status"];
+        BOOL confirmed=[status isEqual:@"favorited"];
+        BOOL blocked=[[self.mutations invokeMethod:@"blocked" withArguments:@[ident]]toBool];
+        if(pending||confirmed==blocked){
+            if([[self.mutations invokeMethod:@"settle" withArguments:@[ident,snapshot[@"token"],@(confirmed)]]toBool])
+                [self favoriteEvent:@"settled" id:ident value:confirmed?@"collected":@"quarantined"];
+        }
+    }else if(pending&&[snapshot[@"state"]isEqual:@"stopped"]&&[snapshot[@"current"]isKindOfClass:NSDictionary.class]){
+        NSString *ident=snapshot[@"current"][@"id"];
+        if([[self.mutations invokeMethod:@"settle" withArguments:@[ident,snapshot[@"token"],@NO]]toBool])
+            [self favoriteEvent:@"settled" id:ident value:@"quarantinedOnStop"];
+    }
 }
 - (void)install {
     [self log:[NSString stringWithFormat:@"插件%@已加载：%s；隐藏采集模式",ZZPickerVersion,ZZ_VARIANT]];
@@ -130,18 +159,27 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if(![self.environment[@"verifiedAppVersion"]boolValue]&&!allow)return @"当前转转版本尚未验证，请先查看版本说明并确认仅本次测试";
     if([[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool])return @"上一笔收藏仍在处理中，请先等待结果或重开转转核对收藏";
     NSString *error=[self saveConfigurationDraft:config];if(error)return error;
-    if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];ZZStopCollector();
+    if(self.run){[self.run invokeMethod:@"stop" withArguments:@[]];[self persistHits:[self snapshot]];}ZZStopCollector();
     self.run=[self.js[@"ZZCore"][@"Run"]constructWithArguments:@[self.config]];[self.run invokeMethod:@"start" withArguments:@[]];self.searchController=nil;[self.detailParts removeAllObjects];[self.searchTrace removeAllObjects];ZZResetPagination(0);
     JSValue *started=self.run;[self log:[NSString stringWithFormat:@"从%@开始新任务；等待实际筛选请求确认",ZZSearchSurface()]];
     ZZDismissSettings(^{if(self.run==started&&[[self snapshot][@"state"]isEqual:@"search"]){[self attachEntry];[self pump];[self showTask];}});return nil;
 }
 - (void)pause:(NSString *)reason {if(!self.run)return;[self.run invokeMethod:@"pause" withArguments:@[reason]];@synchronized(self){self.action=nil;}[self prepareAllWebViews];[self log:reason];}
 - (void)resume {if(!self.enabled||!self.run||ZZViewerVisible())return;[self.run invokeMethod:@"resume" withArguments:@[]];[self pump];[self showTask];}
-- (void)stop {if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];[self settleFavorite];@synchronized(self){self.action=nil;}[self prepareAllWebViews];ZZStopCollector();[self log:@"任务已结束，结果与已完成收藏已保留"];[self showTask];}
+- (void)stop {if(self.run)[self.run invokeMethod:@"stop" withArguments:@[]];NSDictionary *snapshot=[self snapshot];[self settleFavorite:snapshot];[self persistHits:snapshot];@synchronized(self){self.action=nil;}[self prepareAllWebViews];ZZStopCollector();[self log:@"任务已结束，结果与已完成收藏已保留"];[self showTask];}
 - (void)viewMatched {
     NSDictionary *hit=[self snapshot][@"hit"],*item=hit[@"item"];if(!item)return;
     BOOL safe=[[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[item[@"jumpUrl"]?:@"",item[@"id"]?:@""]]toBool];
     if(safe&&[[self.run invokeMethod:@"beginViewing" withArguments:@[]]toBool]){ZZShowMatchedProduct(item);[self attachEntry];[self changed];}
+}
+- (BOOL)viewRecordedProduct:(NSDictionary *)row {
+    NSString *ident=row[@"id"],*path=row[@"detailPath"];
+    if(![ident isKindOfClass:NSString.class]||![path isKindOfClass:NSString.class]||!self.borrowedConfiguration||ZZViewerVisible())return NO;
+    NSString *url=[NSString stringWithFormat:@"%@?infoId=%@",path,ident];
+    if(![[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[url,ident]]toBool])return NO;
+    [self pause:@"查看命中记录，任务已暂停"];
+    ZZShowRecordedProduct(@{@"id":ident,@"jumpUrl":url});
+    return YES;
 }
 - (void)returnedFromDetails {[self.run invokeMethod:@"viewed" withArguments:@[]];if([[self.run invokeMethod:@"recheckFavorite" withArguments:@[]]toBool]){[self favoriteEvent:@"manualReturnReadback" id:[self snapshot][@"current"][@"id"] value:nil];[self pump];}[self attachEntry];[self changed];[self showTask];}
 - (NSDictionary *)context {@synchronized(self){if(!self.action)return @{};return @{@"token":self.action[@"token"],@"id":self.action[@"id"]?:self.action[@"item"][@"id"]?:@"",@"allowFavorite":@([self.action[@"type"]isEqual:@"favorite"]),@"filterCommit":(self.filterDriver.willCommit||self.filterDriver.complete)?@YES:@NO};}}
@@ -182,7 +220,10 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if([m[@"path"]isEqual:@"/zz/v2/zzsearchfilteritem/getStockCount"])return;
     if([m[@"path"]isEqual:@"/zz/transfer/search"]){if([[self.run invokeMethod:@"searchFailed" withArguments:@[m[@"page"]?:@0,m[@"token"]]]toBool]){[self pump];[self changed];}return;}
     NSDictionary *a=self.action;if(![a[@"token"]isEqual:m[@"token"]]||![self isCurrent:a])return;
-    [self.run invokeMethod:@"failed" withArguments:@[@"商品请求失败，任务已暂停或等待核对",a[@"token"]]];[self pump];
+    NSString *type=a[@"type"],*path=m[@"path"];
+    if([type isEqual:@"favorite"]&&(![path isEqual:@"/zz/transfer/addLoveInfo"]||![a[@"id"]isEqual:m[@"id"]]))return;
+    if([type isEqual:@"verify"]&&(![path isEqual:@"/zzopen/waresshow/baseInfo"]||![a[@"id"]isEqual:m[@"id"]]))return;
+    [self.run invokeMethod:@"failed" withArguments:@[[type isEqual:@"favorite"]?@"收藏请求失败":@"商品请求失败",a[@"token"]]];[self pump];
 }
 - (void)observeJSON:(NSDictionary *)json metadata:(NSDictionary *)m webView:(WKWebView *)web {
     if(!NSThread.isMainThread){dispatch_async(dispatch_get_main_queue(),^{[self observeJSON:json metadata:m webView:web];});return;}
@@ -190,8 +231,8 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     [self traceSearch:m event:@"responseReceived" response:json];
     if([path isEqual:@"/zz/transfer/addLoveInfo"]){NSString *code=[json[@"respCode"]description];BOOL numeric=code.length&&code.length<=12&&[code rangeOfCharacterFromSet:NSCharacterSet.decimalDigitCharacterSet.invertedSet].location==NSNotFound;[self favoriteEvent:@"responseReceived" id:m[@"id"] value:numeric?code:@"unknownCode"];}
     if([path isEqual:@"/zzopen/waresshow/baseInfo"]&&[[self snapshot][@"phase"]isEqual:@"verify"]){id value=[[self.js[@"ZZCore"]invokeMethod:@"collectedState" withArguments:@[json]]toObject];[self favoriteEvent:@"readback" id:m[@"id"] value:[value isKindOfClass:NSNumber.class]?value:NSNull.null];}
-    if([path isEqual:@"/zz/transfer/addLoveInfo"]&&[[self.mutations invokeMethod:@"complete" withArguments:@[m[@"id"]?:@"",m[@"token"]]]toBool])[self changed];
-    if([[self snapshot][@"state"]isEqual:@"stopped"]){[self.run invokeMethod:@"settleStopped" withArguments:@[path.lastPathComponent,json,m[@"id"]?:@"",m[@"token"]]];[self changed];return;}
+    if([path isEqual:@"/zz/transfer/addLoveInfo"]&&![@[@"favorite",@"verify"]containsObject:[self snapshot][@"phase"]]&&[[self.mutations invokeMethod:@"complete" withArguments:@[m[@"id"]?:@"",m[@"token"]]]toBool])[self changed];
+    if([[self snapshot][@"state"]isEqual:@"stopped"]){[self.run invokeMethod:@"settleStopped" withArguments:@[path.lastPathComponent,json,m[@"id"]?:@"",m[@"token"]]];[self persistHits:[self snapshot]];[self changed];return;}
     if([path isEqual:@"/zz/transfer/search"]&&[m[@"keyword"]isEqual:[self snapshot][@"config"][@"model"]]){
         NSDictionary *s=[self snapshot];NSUInteger page=[m[@"page"]integerValue];
         if([s[@"phase"]isEqual:@"filters"]&&self.filterDriver&&!self.filterDriver.complete){if([m[@"filterCommit"]boolValue]&&[s[@"token"]isEqual:m[@"token"]])self.pendingFilterResponse=@{@"json":json,@"metadata":m};return;}
@@ -214,7 +255,8 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     }
 }
 - (void)pump {
-    [self settleFavorite];
+    NSDictionary *snapshot=[self snapshot];
+    [self settleFavorite:snapshot];[self persistHits:snapshot];
     NSDictionary *next=[[self.run invokeMethod:@"next" withArguments:@[]]toDictionary];@synchronized(self){self.action=next;}
     if(!next){[self prepareAllWebViews];NSString *state=[self snapshot][@"state"];if([@[@"stopped",@"finished"]containsObject:state]||([state isEqual:@"hit"]&&![[self.mutations invokeMethod:@"pending" withArguments:@[]]toBool]))ZZStopCollector();[self changed];return;}
     self.uiAttempts=0;NSString *type=next[@"type"];self.pendingFilterResponse=nil;
@@ -228,6 +270,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW,seconds*NSEC_PER_SEC),dispatch_get_main_queue(),^{if(![self isCurrent:next]||[type isEqual:@"nextPage"])return;
         NSString *reason=[type isEqual:@"open"]?@"隐藏采集超时，未弹出详情；请导出诊断":@"等待页面或接口超时，请查看诊断";
         if([type isEqual:@"filters"]){NSDictionary *d=self.filterDriver.diagnostics;reason=self.filterDriver.complete?@"筛选界面操作已完成，但未收到可确认的搜索响应，请导出诊断":[NSString stringWithFormat:@"筛选未完成：%@／%@；请导出诊断",d[@"field"]?:@"",d[@"stageName"]?:@""];}
+        if([type isEqual:@"favorite"])reason=@"等待收藏请求或响应超时";
         if([@[@"favorite",@"verify"]containsObject:type])[self favoriteEvent:@"timeout" id:next[@"id"] value:type];[self.run invokeMethod:@"failed" withArguments:@[reason,next[@"token"]]];[self log:reason];[self pump];});
 }
 - (void)drive:(NSDictionary *)a {
@@ -246,11 +289,11 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
         }
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW,1200*NSEC_PER_MSEC),dispatch_get_main_queue(),^{if([self isCurrent:a])[self drive:a];});
     }
-    else if([type isEqual:@"favorite"]){if(!self.detailWeb){[self pause:@"隐藏收藏页面未建立"];return;}if([[self.mutations invokeMethod:@"blocked" withArguments:@[a[@"id"]]]toBool]){[self favoriteEvent:@"quarantinedReadOnly" id:a[@"id"] value:nil];[self.run invokeMethod:@"failed" withArguments:@[@"该商品上次收藏待确认，仅重新核验，不重复收藏",a[@"token"]]];[self pump];return;}if(![[self.mutations invokeMethod:@"begin" withArguments:@[a[@"id"],a[@"token"]]]toBool]){[self pause:@"上一笔收藏尚未返回，已暂停"];return;}[self favoriteEvent:@"attempt" id:a[@"id"] value:nil];
+    else if([type isEqual:@"favorite"]){if(!self.detailWeb){[self.run invokeMethod:@"failed" withArguments:@[@"隐藏收藏页面未建立",a[@"token"]]];[self pump];return;}if([[self.mutations invokeMethod:@"blocked" withArguments:@[a[@"id"]]]toBool]){[self favoriteEvent:@"quarantinedReadOnly" id:a[@"id"] value:nil];[self.run invokeMethod:@"failed" withArguments:@[@"该商品上次收藏待确认，仅重新核验，不重复收藏",a[@"token"]]];[self pump];return;}if(![[self.mutations invokeMethod:@"begin" withArguments:@[a[@"id"],a[@"token"]]]toBool]){[self pause:@"上一笔收藏尚未返回，已暂停"];return;}[self favoriteEvent:@"attempt" id:a[@"id"] value:nil];
         [self.detailWeb evaluateJavaScript:[NSString stringWithFormat:@"window.ZZWeb?window.ZZWeb.favorite(%@):({ok:false,reason:'收藏桥接未建立'})",[self jsonString:a[@"id"]]] completionHandler:^(id result,NSError *error){
             BOOL refused=!error&&[result isKindOfClass:NSDictionary.class]&&[result[@"ok"]isEqual:@NO];if(refused)[self.mutations invokeMethod:@"complete" withArguments:@[a[@"id"],a[@"token"]]];
             NSArray *reasons=@[@"未识别到收藏入口",@"收藏入口不唯一",@"未确认商品当前未收藏",@"商品或任务不匹配",@"本页已发起收藏，等待确认",@"收藏桥接未建立",@"页面地址无效"];id reason=[result isKindOfClass:NSDictionary.class]?result[@"reason"]:nil;[self favoriteEvent:error?@"scriptError":refused?@"clickRefused":@"clickAccepted" id:a[@"id"] value:error?@(error.code):refused?([reasons containsObject:reason]?reason:@"unknownRefusal"):nil];
-            if(![self isCurrent:a])return;if(error||refused||![result isKindOfClass:NSDictionary.class]){[self.run invokeMethod:@"failed" withArguments:@[@"收藏入口未确认，改为读取状态",a[@"token"]]];[self pump];}
+            if(![self isCurrent:a])return;if(error||refused||![result isKindOfClass:NSDictionary.class]){[self.run invokeMethod:@"failed" withArguments:@[(refused&&[reasons containsObject:reason])?reason:@"收藏入口未确认",a[@"token"]]];[self pump];}
         }];
     }else if([type isEqual:@"verify"]){BOOL fresh=[a[@"item"]isKindOfClass:NSDictionary.class];BOOL safe=!fresh||[[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[a[@"item"][@"jumpUrl"]?:@"",a[@"id"]]]toBool];if(!safe||!ZZLoadCollector(fresh?a[@"item"]:@{},!fresh)){[self.run invokeMethod:@"verified" withArguments:@[NSNull.null,a[@"token"]]];[self pump];}}
     else if([type isEqual:@"back"]){[self.detailWeb stopLoading];[self.run invokeMethod:@"returned" withArguments:@[a[@"token"]]];[self pump];}
@@ -268,6 +311,17 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     (void)controller;if(![message.body isKindOfClass:NSDictionary.class])return;WKWebView *web=message.webView;WKFrameInfo *frame=message.frameInfo;
     if(!ZZTrustedBridgeFrame(web.URL,frame.request.URL,frame.securityOrigin.protocol,frame.securityOrigin.host,frame.mainFrame)||(frame.securityOrigin.port!=0&&frame.securityOrigin.port!=443))return;NSDictionary *m=message.body;
     if([m[@"kind"]isEqual:@"ready"]){[web evaluateJavaScript:[NSString stringWithFormat:@"window.ZZWeb&&window.ZZWeb.setContext(%@)",[self jsonString:[self context]]]completionHandler:nil];return;}
+    if([m[@"kind"]isEqual:@"favoriteConfirmation"]){
+        if(web!=self.detailWeb||![m[@"id"]isKindOfClass:NSString.class]||![m[@"token"]isKindOfClass:NSDictionary.class])return;
+        NSDictionary *snapshot=[self snapshot];
+        if(![snapshot[@"current"]isKindOfClass:NSDictionary.class]||![snapshot[@"current"][@"id"]isEqual:m[@"id"]])return;
+        if(![[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[web.URL.absoluteString?:@"",m[@"id"]]]toBool])return;
+        if([[self.run invokeMethod:@"favoriteNeedsConfirmation" withArguments:@[m[@"token"]]]toBool]){
+            [self favoriteEvent:@"confirmationRequired" id:m[@"id"] value:nil];
+            [self pump];
+        }
+        return;
+    }
     if([m[@"kind"]isEqual:@"request"])[self observeRequest:m];else if([m[@"kind"]isEqual:@"failure"])[self observeFailure:m];else if([m[@"kind"]isEqual:@"response"]&&[m[@"data"]isKindOfClass:NSDictionary.class])[self observeJSON:m[@"data"]metadata:m webView:web];
 }
 @end
