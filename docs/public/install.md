@@ -1,4 +1,4 @@
-# 安装与使用 · 1.2.0-beta9
+# 安装与使用 · 1.2.0-beta11
 
 这是转转选机助手的社区免费试用版，与转转官方无关。无需付费、另行注册或插件服务器。先阅读[兼容说明](compatibility.md)，保留你手头可用的旧安装包，确认能恢复后再替换。
 
@@ -8,11 +8,11 @@
 
 | 使用环境 | 文件 | 安装方式 |
 |---|---|---|
-| TrollFools | `ZZPicker-1.2.0-beta9-trollfools.dylib` 或 `ZZPicker-1.2.0-beta9-trollfools.zip` | 在 TrollFools 中选择转转，导入其中一种文件并注入 |
-| rootless 越狱 | `ZZPicker-1.2.0-beta9-rootless.deb` | 用对应环境的包管理器安装 |
-| RootHide 环境 | `ZZPicker-1.2.0-beta9-roothide.deb` | 用该环境的包管理器安装，并按环境规则允许转转加载 |
+| TrollFools | `ZZPicker-1.2.0-beta11-trollfools.dylib` 或 `ZZPicker-1.2.0-beta11-trollfools.zip` | 在 TrollFools 中选择转转，导入其中一种文件并注入 |
+| rootless 越狱 | `ZZPicker-1.2.0-beta11-rootless.deb` | 用对应环境的包管理器安装 |
+| RootHide 环境 | `ZZPicker-1.2.0-beta11-roothide.deb` | 用该环境的包管理器安装，并按环境规则允许转转加载 |
 
-`ZZPicker-1.2.0-beta9-release.zip` 为分发合集，包含各安装格式、文档与校验清单；`ZZPicker-1.2.0-beta9-source.zip` 为源码，不是手机安装包。使用 `SHA256SUMS` 核对单个文件；合集本身使用 `ZZPicker-1.2.0-beta9-release.zip.sha256` 核对。文件名或校验不一致时重新取得完整原包。
+`ZZPicker-1.2.0-beta11-release.zip` 为分发合集，包含各安装格式、文档与校验清单；`ZZPicker-1.2.0-beta11-source.zip` 为源码，不是手机安装包。使用 `SHA256SUMS` 核对单个文件；合集本身使用 `ZZPicker-1.2.0-beta11-release.zip.sha256` 核对。文件名或校验不一致时重新取得完整原包。
 
 同一转转 App 只装一种 ZZPicker。先结束任务、完全关闭转转，移除原注入或原包，再安装对应的新文件，最后重开转转。插件不会扩大注入工具支持的设备或系统范围；rootless、RootHide 包尚无本项目真机加载结论。
 
@@ -35,7 +35,7 @@
 
 ## 收藏与停止
 
-beta11 的安装文件见 [GitHub 预发布](https://github.com/bingdilian/zz-picker-public/releases/tag/v1.2.0-beta11)，下载 TrollFools 压缩包并解压出 `ZZPicker.dylib`。在 beta9 中，平台换新电池提醒需要手动确认。使用 beta11 时，可同时开启「自动加入收藏」与「允许自动确认换新电池提醒」。要在等待结束后继续扫描，再打开「命中后继续扫描」。
+beta11 的安装文件见 [GitHub 预发布](https://github.com/bingdilian/zz-picker-public/releases/tag/v1.2.0-beta11)，可直接下载 dylib，或解压 TrollFools 压缩包取得 `ZZPicker.dylib`。在 beta9 中，平台换新电池提醒需要手动确认。使用 beta11 时，可同时开启「自动加入收藏」与「允许自动确认换新电池提醒」。要在等待结束后继续扫描，再打开「命中后继续扫描」。
 
 beta9 会在收藏核验结束后解除全局等待。无法确认的商品按 ID 在当前 App 进程内隔离，不再自动点击收藏，但可继续扫描其他商品；结束任务或新建任务不会清除隔离。完全重开 App 会清除内存记录，因此重开前后都应先手动核对未知商品。
 

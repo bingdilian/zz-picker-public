@@ -25,21 +25,27 @@
 
 请在 Release 的 **Assets** 中下载。一个转转 App 只安装或注入一种 ZZPicker，勿同时使用多个格式或版本。
 
-| beta11 下载文件 | 用途与操作 |
-|---|---|
-| [ZZPicker-1.2.0-beta11-trollfools.zip](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/ZZPicker-1.2.0-beta11-trollfools.zip) | 解压得到 `ZZPicker.dylib`，通过 TrollFools 注入 |
-| [SHA256SUMS](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/SHA256SUMS) | 校验已下载的文件 |
+| 下载文件 | 用途与操作 | 真机验证情况 |
+|---|---|---|
+| [ZZPicker-1.2.0-beta11-trollfools.dylib](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/ZZPicker-1.2.0-beta11-trollfools.dylib) | 在 TrollFools 中选择转转，导入并注入动态库 | beta9 已在真机验证此注入方式，beta11 待复测 |
+| [ZZPicker-1.2.0-beta11-trollfools.zip](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/ZZPicker-1.2.0-beta11-trollfools.zip) | 内含 `ZZPicker.dylib`；可先解压，再按 dylib 步骤注入。若工具支持直接导入压缩包，也只导入这一种 | 压缩包直接导入流程未实测 |
+| [ZZPicker-1.2.0-beta11-rootless.deb](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/ZZPicker-1.2.0-beta11-rootless.deb) | 普通 Dopamine 无根环境，通过该环境的包管理器安装 | 未实测，需自行测试 |
+| [ZZPicker-1.2.0-beta11-roothide.deb](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/ZZPicker-1.2.0-beta11-roothide.deb) | Dopamine RootHide 环境，通过该环境的包管理器安装，并按环境规则允许转转加载插件 | 未实测，需自行测试 |
+| [ZZPicker-1.2.0-beta11-release.zip](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/ZZPicker-1.2.0-beta11-release.zip) | 全部格式、说明、源码与校验清单的合集；解压后只选适合自身环境的一种安装文件 | 合集本身不能直接注入 |
+| [ZZPicker-1.2.0-beta11-source.zip](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/ZZPicker-1.2.0-beta11-source.zip) / GitHub 的 `Source code` 压缩包 | 开发者阅读、修改及构建源码使用 | 不是手机安装包 |
+| [SHA256SUMS](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/SHA256SUMS) / [release.zip.sha256](https://github.com/bingdilian/zz-picker-public/releases/download/v1.2.0-beta11/ZZPicker-1.2.0-beta11-release.zip.sha256) | 下载完整性校验；后一文件用于校验完整合集 | 无需安装或注入 |
 
 ### 2. TrollFools 注入 dylib
 
-1. 下载 beta11 的 `trollfools.zip` 并解压得到 `ZZPicker.dylib`。升级前先结束任务，完全关闭转转。
-2. 打开 TrollFools，选择转转。如果已经注入旧版 ZZPicker，先在该 App 的插件管理中移除旧版。
-3. 导入解压得到的 `ZZPicker.dylib`。完全关闭并重新打开转转，确认出现「选机设置」。
-4. 在「说明 / 环境」核对版本。首次可先关闭自动收藏，验证搜索和报告结果，再按需启用收藏。
+1. 下载上表的 `trollfools.dylib` 并保存到手机“文件”。升级前先结束任务，完全关闭转转。
+2. 打开 TrollFools，选择转转。如果已经注入旧版 ZZPicker，先在该 App 的插件管理中移除旧版，避免重复加载。
+3. 导入下载的 `ZZPicker-1.2.0-beta11-trollfools.dylib`，完成注入。
+4. 完全关闭并重新打开转转，确认出现“选机设置”入口。
+5. 打开“说明 / 环境”，核对插件版本、转转版本及编译变体。首次使用建议先关闭自动收藏，验证搜索和报告结果后，再开启测试。
 
-### 3. deb 安装（beta9 下载）
+使用 `trollfools.zip` 时，可先在“文件”中解压出 `ZZPicker.dylib`，然后执行同样步骤；不要把完整合集、源码压缩包或 `.deb` 当作 dylib 导入。下方 beta9 真机记录使用的是直接下载的 `.dylib`。
 
-rootless 与 RootHide 的公开安装包见 [beta9 Release](https://github.com/bingdilian/zz-picker-public/releases/tag/v1.2.0-beta9)。
+### 3. deb 安装（未实测）
 
 1. 先确认自己属于普通 Dopamine **rootless**，还是 Dopamine **RootHide**，下载对应的 `.deb`，不要混装。
 2. 结束任务并完全关闭转转；如原来通过 TrollFools 注入过 ZZPicker，先移除该注入。
