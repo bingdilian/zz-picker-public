@@ -28,6 +28,22 @@ test('auto favorite completes verification before hit hold; original favorites a
 test('favorite failure remains a hit but cannot count as confirmed favorite or auto retry',()=>{
  const r=started({autoFavorite:true});let a=r.next();r.detail(product(),a.token);a=r.next();r.favoriteResult({respCode:403},a.token);assert.equal(r.snapshot().state,'hit');assert.equal(r.snapshot().hit.status,'favoriteFailed');assert.equal(r.snapshot().counts.favorited,0);assert.equal(r.next(),null);
 });
+test('favorite failures retain the response code on the item after scanning advances',()=>{
+ for(const [responseCode,expected] of [[403,'403'],['-102','-102'],['private-message',null],[undefined,null]]){
+  const r=started({autoFavorite:true,continueAfterHit:true});
+  r.detail(product(),r.next().token);
+  r.favoriteResult({respCode:responseCode},r.next().token);
+  const back=r.next();
+  assert.equal(back.type,'back');
+  r.returned(back.token);
+  const snapshot=r.snapshot();
+  assert.equal(C.diagnosticSnapshot(snapshot).results,undefined);
+  const result=C.diagnosticSnapshot(snapshot,true).results[0];
+  assert.equal(result.status,'favoriteFailed');
+  assert.equal(result.favoriteResponseCode,expected);
+  assert.equal(JSON.stringify(result).includes('private-message'),false);
+ }
+});
 test('viewing and returning from a hit stay paused until explicit resume',()=>{
  const r=hold(started());assert.equal(r.beginViewing(),true);assert.equal(r.snapshot().state,'paused');r.viewed();assert.equal(r.next(),null);assert.match(r.snapshot().note,/返回/);r.resume();assert.equal(r.next().type,'back');
 });

@@ -1,24 +1,9 @@
-# 转转选机助手 1.2.0-beta9｜社区免费试用
+# 转转选机助手 v1 · 1.2.0-beta16
 
-我准备了一版非官方转转选机助手，邀请愿意提供实际测试反馈的朋友免费试用。按型号、待售手机 iOS 区间、购买渠道、容量和成色筛选，读取验机报告后显示命中并暂停，可查看详情或继续扫描。无需付费、另行注册或连接插件服务器。
+可以在转转里按型号、待售手机 iOS 范围、购买渠道、容量和成色筛选。新版增加验机报告筛选，覆盖外观、电池情况、屏幕、设备功能和维修浸液。待确认或被排除的商品可以从「筛选核验记录」打开详情，逐条核对。
 
-适配基线为转转 **12.8.5**，动态库 **arm64 / 最低 iOS 15.0**；实际安装还取决于注入工具与设备环境。提供 TrollFools、rootless 和 RootHide 三种文件，不代表三个环境都已实机通过。
+命中后可以保留记录并继续扫描，也可按设置自动收藏。收藏状态会独立核验。平台焕新电池提醒的自动确认默认关闭，按需开启。beta16 修正了报告中「未检出缺失」且平台标记正常时被列为待确认的问题。
 
-beta9 修复收藏待确认后全局等待无法结束的问题，并增加详情返回只读核验与收藏诊断。保留 beta8 的设置保存修复。禁止下滑直接关闭设置，已有任务沿用启动条件。保留 beta7 的悬浮入口拖动与此前修复。另提供首次使用帮助、环境信息、全局停用、任务件数与时间上限，以及预览后手动分享诊断。新用户自动收藏默认关闭；升级保留已有开关值，请先核对。默认最多处理 100 件、有效运行 15 分钟，暂停与查看详情不计时，达到上限需要新建任务。停用或结束无法撤回已经发出的收藏。
+已有真机记录来自 iPhone 13 Pro Max、iOS 15.4.1、转转 12.8.5，使用 TrollFools 直接注入 dylib。其他安装方式请自行验证。长时间运行会导致手机发热，介意请勿使用。
 
-目前实机证据仅来自旧版 test5：iPhone 13 Pro Max / iOS 15.4.1 / TrollFools，最终搜索确认 512G + 99新，加载 20 件、处理 4 件、排除 3 件、命中 1 件，自动收藏关闭，随后结束任务。购买渠道筛选、连续翻页、自动收藏回读及 rootless / RootHide 加载仍待验证，本版新增行为也需要手机验收。请先关闭收藏做只读测试；不承诺所有版本兼容或账号风险为零。
-
-下载请打开 [GitHub beta9 Release](https://github.com/bingdilian/zz-picker-public/releases/tag/v1.2.0-beta9)，按文件名选择，合集中的说明与校验清单一并保留：
-
-- [TrollFools dylib](ZZPicker-1.2.0-beta9-trollfools.dylib) / [TrollFools zip](ZZPicker-1.2.0-beta9-trollfools.zip)，任选一种。
-- [rootless deb](ZZPicker-1.2.0-beta9-rootless.deb) / [RootHide deb](ZZPicker-1.2.0-beta9-roothide.deb)，按实际环境选择。
-- [源码包](ZZPicker-1.2.0-beta9-source.zip) / [分发合集](ZZPicker-1.2.0-beta9-release.zip)。
-- [单文件校验清单](SHA256SUMS) / [合集 SHA-256](ZZPicker-1.2.0-beta9-release.zip.sha256)。
-
-以上相对链接用于随包说明；正式分享前需先上传相应附件并替换为实际下载链接。平台换新电池的收藏二次确认尚未自动处理，遇到该提示可能等待超时。
-
-安装前先移除同一 App 的旧 ZZPicker 注入，完全关闭转转，再安装一种对应格式。保留你自己的旧包方便回退，旧测试包不能当作稳定版。运行时保持转转前台；不会后台持续扫描或自动更新。
-
-反馈请附设备型号代码、iOS、转转、插件与注入工具版本，说明复现步骤、自动收藏开关、任务上限和暂停提示。默认诊断不含商品明细；可自选详细诊断，其中会包含标题、商品 ID 和筛选条件。两种模式均不收原始鉴权、完整请求头或原始网络报文；分享前可预览，由你选择发送对象，不自动上传。
-
-完整说明见随包的 [安装指南](install.md)、[兼容范围](compatibility.md)、[反馈说明](feedback.md) 与 [版本记录](CHANGELOG.md)。本文仅为发帖稿，发布和附件上传由你手动完成。
+[项目与使用说明](https://github.com/bingdilian/zz-picker-public) · [beta16 下载](https://github.com/bingdilian/zz-picker-public/releases/tag/v1.2.0-beta16) · [v1 问题反馈](https://github.com/bingdilian/zz-picker-public/issues/new?template=v1-bug-report.yml)

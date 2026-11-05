@@ -5,7 +5,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 #define ZZPickerOwnViewTag 0x5A5A5001
-#define ZZPickerVersion @"1.2.0-beta12"
+#define ZZPickerVersion @"1.2.0-beta16"
 
 @interface ZZPicker : NSObject <WKScriptMessageHandler>
 + (instancetype)shared;

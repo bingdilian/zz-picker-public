@@ -55,6 +55,7 @@
   var inspectionOrder = ['repair','screen','functions','battery','appearance'];
   var wearPaths = ['外壳›外壳外观痕迹','屏幕›屏幕外观痕迹'];
   var dismantlePath = '拆机情况›拆机情况';
+  var partsMissingPath = '维修浸液›零件缺失';
   var na = /^(不适用|无此功能|无此配置)$/;
   function inspectionDefaults() {
     return {battery:{types:['未检出更换']},screen:{mode:'all'},functions:{mode:'all'},repair:{mode:'all'}};
@@ -151,8 +152,17 @@
         // The captured repair report includes an empty, zero-count battery subsection.
         if(!path.length&&n.name==='电池检测'&&!n.values&&n.normalNum===0&&n.abNormalNum===0)return;
         var key=next.join('›');
-        if(items[key]){items[key]={state:'unknown',texts:[]};duplicate=true;}
-        else items[key]=inspectionLeaf(n.values);
+        var prior=items[key];
+        if(prior)duplicate=true;
+        var item=prior?{state:'unknown',texts:[]}:inspectionLeaf(n.values);
+        if(category.name==='维修浸液'&&(key===dismantlePath||key===partsMissingPath)){
+          var values=Array.isArray(n.values)?n.values:[];
+          item.values=(prior&&prior.values||[]).concat(values.slice(0,20)).slice(0,20).map(function(v){
+            return {value:v&&typeof v.value==='string'?v.value.slice(0,150):null,
+              isNormal:v&&bool(v.isNormal)!==null?v.isNormal:null};
+          });
+        }
+        items[key]=item;
       }
       (Array.isArray(category.children)?category.children:[]).forEach(function(n){read(n,[]);});
       var applicable=Object.keys(items).filter(function(key){return items[key].state!=='na';});
@@ -193,14 +203,26 @@
     });
     if(rule.maxCycles!=='')field('充电次数',cycleCount,function(v){return Number(v)<=Number(rule.maxCycles);});
   }
-  function repairDecision(row, allowBatteryOnly) {
+  function repairDecision(row, allowBatteryOnly, isPartsMissing) {
     if(row.state==='unknown')return 'unknown';
     var text=row.texts.join('、');
     if(row.texts.length===1&&text==='平台已拆机换电')return allowBatteryOnly?'pass':'fail';
     if(row.state==='fail')return 'fail';
+    if(isPartsMissing&&row.state==='pass'&&row.texts.every(function(v){return v==='未检出缺失';}))return 'pass';
     if(row.texts.every(function(v){return /^(正常|无|未拆机|无拆机|未检出(?:维修(?:更换)?|更换|浸液(?:痕迹)?|拆机(?:痕迹)?)|无(?:维修|更换|浸液|拆机)(?:记录|痕迹)?)$/.test(v);}))return 'pass';
     if(row.texts.some(function(v){return !/^(?:未|无)/.test(v)&&/维修|更换|浸液|拆机/.test(v);}))return 'fail';
     return 'unknown';
+  }
+  function checkDismantle(row, allowBatteryOnly) {
+    var values=row&&row.values||[], label=row&&row.texts[0];
+    if(label&&row.texts.every(function(v){return /^平台(?:已|未)拆机检测$/.test(v);})){
+      if(row.state==='pass'&&row.texts.every(function(v){return v===label;}))
+        return {values:values,decision:'pass',reason:'平台检测方式，平台标记正常'};
+      return {values:values,decision:'unknown',reason:'平台检测方式或正常标记缺失或冲突'};
+    }
+    var decision=!row?'unknown':row.state==='na'?'na':repairDecision(row,allowBatteryOnly);
+    var reason={pass:'符合拆机筛选条件',fail:'拆机结果不符合筛选条件',unknown:'拆机结果缺失、冲突或无法识别',na:'报告标记不适用'};
+    return {values:values,decision:decision,reason:reason[decision]};
   }
   function wearTokens(row) {
     return row.texts.join('、').replace(/／/g,'/').split(/[、，,；;]+/).map(function(t){return t.trim();});
@@ -213,6 +235,7 @@
   }
   function inspectReport(report, filters, reject, unknown) {
     report=report||{categories:{},params:{}};
+    var checks={};
     inspectionOrder.forEach(function(key){
       var rule=filters[key], section=inspectionGroups.find(function(g){return g.key===key;});
       if(key==='battery'){inspectBattery(report.params,rule,reject,unknown);return;}
@@ -220,15 +243,25 @@
       var category=report.categories[section.name], items=category?category.items:{};
       var selected=rule.mode==='selected';
       var paths=selected?rule.items:Object.keys(items);
+      if(key==='repair'&&!selected&&!items[dismantlePath])paths.push(dismantlePath);
       var exclusionOnly=key==='appearance'&&selected&&rule.wear.length>0;
       if(exclusionOnly)paths=paths.concat(wearPaths.filter(function(path){return paths.indexOf(path)<0;}));
       paths.forEach(function(path){
         var row=items[path];
-        if(row&&row.state==='na')return;
+        var isDismantle=key==='repair'&&path===dismantlePath;
+        var isPartsMissing=key==='repair'&&path===partsMissingPath;
+        if(isDismantle){
+          checks.dismantleCheck=checkDismantle(row,selected&&rule.allowBatteryOnly);
+        }
+        if(row&&row.state==='na'){
+          if(isPartsMissing)checks.partsMissingCheck={values:row.values||[],decision:'na'};
+          return;
+        }
         var label=section.label+' › '+path.replace(/›/g,' › '), result=row?row.state:'unknown';
+        if(isDismantle)result=checks.dismantleCheck.decision;
+        else if(row&&key==='repair')result=repairDecision(row,false,isPartsMissing);
+        if(isPartsMissing)checks.partsMissingCheck={values:row&&row.values||[],decision:result};
         if(row&&key==='repair'){
-          var allow=selected&&rule.allowBatteryOnly&&path===dismantlePath;
-          result=repairDecision(row,allow);
           if(result==='fail'&&row.texts.length===1&&['平台已拆机换电','屏幕外玻璃更换'].indexOf(row.texts[0])>=0)
             label+='（'+row.texts[0]+'）';
         }
@@ -243,6 +276,7 @@
       });
       if(!selected&&(!category||!category.complete))unknown.push(section.label+' › 报告项目完整性待确认');
     });
+    return checks;
   }
   function validateConfig(input) {
     input = input || {};
@@ -325,8 +359,8 @@
     if(c.capacities.length){if(!p.capacity)unknown.push('容量缺失');else if(c.capacities.indexOf(normalizeCapacity(p.capacity))<0)reject.push('容量不符');}
     if(c.conditions.length){if(!p.condition)unknown.push('成色缺失');else if(c.conditions.indexOf(p.condition)<0)reject.push('成色不符');}
     (p.issues||[]).forEach(function(x){unknown.push(x);});
-    inspectReport(p.inspection,c.reportFilters,reject,unknown);
-    return {status:reject.length?'reject':unknown.length?'unknown':'match', reasons:reject.concat(unknown)};
+    var checks=inspectReport(p.inspection,c.reportFilters,reject,unknown);
+    return Object.assign({status:reject.length?'reject':unknown.length?'unknown':'match',reasons:reject.concat(unknown)},checks);
   }
   function filterOptions(input) {
     var out={conditions:[],capacities:[]},seen={};
@@ -442,8 +476,15 @@
     else{this.page++;this.current=null;this._issue('nextPage',{page:this.page});this._consumeCached();}
   };
   Run.prototype._consumeCached=function(){if(this.prefetched[this.page]){var cached=this.prefetched[this.page];delete this.prefetched[this.page];this.search(cached.envelope,this.page,this.intent.token,cached.selection,cached.filterCommit);}};
-  Run.prototype._record=function(p,status,reasons){var row={id:this.current.id,title:p.title||this.current.title,model:p.model||'',ios:p.ios||'',channel:p.channel||'',capacity:p.capacity||'',condition:p.condition||'',functionGrade:p.functionGrade||'',status:status,reasons:reasons||[]};if(safeProductURL(this.current.jumpUrl,this.current.id))row.detailPath=this.current.jumpUrl.split('?')[0];this.results.push(row);return row;};
-  Run.prototype._hold=function(status,reasons){
+  Run.prototype._record=function(p,status,reasons,match){
+    var row={id:this.current.id,title:p.title||this.current.title,model:p.model||'',ios:p.ios||'',channel:p.channel||'',capacity:p.capacity||'',condition:p.condition||'',functionGrade:p.functionGrade||'',status:status,reasons:reasons||[]};
+    if(match&&match.dismantleCheck)row.dismantleCheck=match.dismantleCheck;
+    if(match&&match.partsMissingCheck)row.partsMissingCheck=match.partsMissingCheck;
+    if(safeProductURL(this.current.jumpUrl,this.current.id))row.detailPath=this.current.jumpUrl.split('?')[0];
+    this.results.push(row);
+    return row;
+  };
+  Run.prototype._hold=function(status,reasons,match,favoriteResponseCode){
     var row=this.recheckRow||this.pendingMatch;
     if(row){
       if(this.recheckRow&&status==='favorited'){
@@ -451,7 +492,8 @@
         if(row.status==='favoriteManual')this.counts.favoriteManual--;
       }
       Object.assign(row,{status:status,reasons:reasons});
-    }else row=this._record(this.currentProduct,status,reasons);
+    }else row=this._record(this.currentProduct,status,reasons,match);
+    if(favoriteResponseCode!==undefined)row.favoriteResponseCode=favoriteResponseCode;
     var wasRecheck=!!this.recheckRow;
     this.recheckRow=this.pendingMatch=null;
     if(['favorite','verify'].indexOf(this.phase)>=0)this.favoriteSettlement={id:row.id,status:status};
@@ -468,11 +510,11 @@
     this.currentProduct=p;var match=matchProduct(p,this.config);this.counts.processed++;if(match.status!=='unknown')this.counts.checked++;
     if(match.status==='match'){
       this.counts.matched++;
-      if(this.config.autoFavorite&&p.collected===false){this.pendingMatch=this._record(p,'favoritePending',['等待收藏结果']);this._issue('favorite',{id:p.id,allowBatteryConfirmation:this.config.autoConfirmBattery});this.checkBudget();return true;}
-      if(p.collected===true){this.counts.already++;this._hold('already',['原有收藏，已保留']);}
-      else if(this.config.autoFavorite){this.counts.favoriteUnknown++;this._hold('favoriteUnknown',['收藏状态未知，不自动操作']);}
-      else this._hold('match',['符合全部条件']);
-    }else{if(match.status==='unknown')this.counts.unknown++;else this.counts.rejected++;this._record(p,match.status,match.reasons);if(!this.checkBudget())this._issue('back',{id:p.id});}
+      if(this.config.autoFavorite&&p.collected===false){this.pendingMatch=this._record(p,'favoritePending',['等待收藏结果'],match);this._issue('favorite',{id:p.id,allowBatteryConfirmation:this.config.autoConfirmBattery});this.checkBudget();return true;}
+      if(p.collected===true){this.counts.already++;this._hold('already',['原有收藏，已保留'],match);}
+      else if(this.config.autoFavorite){this.counts.favoriteUnknown++;this._hold('favoriteUnknown',['收藏状态未知，不自动操作'],match);}
+      else this._hold('match',['符合全部条件'],match);
+    }else{if(match.status==='unknown')this.counts.unknown++;else this.counts.rejected++;this._record(p,match.status,match.reasons,match);if(!this.checkBudget())this._issue('back',{id:p.id});}
     return true;
   };
   Run.prototype._acceptSettlement=function(token,phase){return this._accept(token,phase)||(this.state==='paused'&&this.phase===phase&&this.intent&&token&&this._requestKey(token)===this._requestKey(this.intent.token));};
@@ -484,12 +526,16 @@
   };
   Run.prototype.favoriteResult=function(envelope,token){
     if(!this._acceptSettlement(token,'favorite'))return false;
-    if(envelope&&String(envelope.respCode)==='0'){
+    var responseCode=envelope&&envelope.respCode;
+    var code=typeof responseCode==='string'||typeof responseCode==='number'?String(responseCode):'';
+    if(code==='0'){
       if(this.state==='paused')this.note='收藏响应已返回，点击继续核对状态';
       else this._issue('verify',{id:this.current.id});
     }else{
       this.counts.favoriteFailed++;
-      this._hold('favoriteFailed',['收藏接口未返回成功']);
+      var failureCode=/^-?[0-9]{1,12}$/.test(code)?code:null;
+      var reason='收藏接口未返回成功'+(failureCode?'（返回码 '+failureCode+'）':'');
+      this._hold('favoriteFailed',[reason],null,failureCode);
     }
     return true;
   };

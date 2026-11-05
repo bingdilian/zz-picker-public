@@ -206,10 +206,33 @@ UIViewController *ZZInspectionSettings(NSDictionary *filters, void (^onApply)(NS
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)path {
     [tableView deselectRowAtIndexPath:path animated:YES];
     NSDictionary *row=self.results[path.row];
-    UIAlertController *detail=[UIAlertController alertControllerWithTitle:row[@"title"] message:[row[@"reasons"] componentsJoinedByString:@"\n"] preferredStyle:UIAlertControllerStyleAlert];
+    BOOL hasLink=[row[@"id"] isKindOfClass:NSString.class]&&[row[@"detailPath"] isKindOfClass:NSString.class];
+    NSString *message=[row[@"reasons"] componentsJoinedByString:@"\n"];
+    if(!hasLink)message=[message stringByAppendingString:@"\n\n可按标题在转转搜索这件商品。"];
+    UIAlertController *detail=[UIAlertController alertControllerWithTitle:row[@"title"] message:message preferredStyle:UIAlertControllerStyleAlert];
     detail.view.tag=ZZPickerOwnViewTag;
+    if(hasLink){
+        __weak UIAlertController *weakDetail=detail;
+        [detail addAction:[UIAlertAction actionWithTitle:@"查看详情" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action){
+            (void)action;
+            UIAlertController *alert=weakDetail;
+            void (^openProduct)(void)=^{[self openProduct:row];};
+            if(alert.isBeingDismissed&&[alert.transitionCoordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context){
+                if(!context.isCancelled)openProduct();
+            }])return;
+            if(alert.presentingViewController)[alert dismissViewControllerAnimated:NO completion:openProduct];
+            else openProduct();
+        }]];
+    }
     [detail addAction:[UIAlertAction actionWithTitle:@"关闭" style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:detail animated:YES completion:nil];
+}
+- (void)openProduct:(NSDictionary *)row {
+    if([ZZPicker.shared viewRecordedProduct:row])return;
+    UIAlertController *alert=[UIAlertController alertControllerWithTitle:@"暂时无法打开商品" message:@"可以先在转转打开一件商品，再回到核验记录重试。" preferredStyle:UIAlertControllerStyleAlert];
+    alert.view.tag=ZZPickerOwnViewTag;
+    [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 @end
 

@@ -237,6 +237,21 @@ static UIView *FindTestView(UIView *root,NSString *identifier){if([root.accessib
         if([picker respondsToSelector:@selector(diagnosticsWithDetails:)]){NSString *detail=[picker diagnosticsWithDetails:YES];CHECK([detail containsString:@"private-product-title"]&&![detail containsString:@"private-query-token"],@"explicit diagnostic details lost products or leaked product URL");}
         Class previewClass=NSClassFromString(@"ZZDiagnosticsController");CHECK(previewClass!=nil,@"diagnostic preview is missing");
         if(previewClass){UIViewController *preview=[(UIViewController *)[previewClass alloc]init];[preview loadViewIfNeeded];UISwitch *details=(id)FindTestView(preview.view,@"includeProductDetails");UITextView *text=(id)FindTestView(preview.view,@"diagnosticPreview");CHECK(details&&!details.on&&text&&!text.editable&&![text.text containsString:@"private-product-title"],@"diagnostic preview must default to public fields only");details.on=YES;[details sendActionsForControlEvents:UIControlEventValueChanged];CHECK([text.text containsString:@"private-product-title"],@"preview did not refresh after explicit detail opt-in");CHECK(FindTestView(preview.view,@"shareDiagnostic")!=nil,@"preview requires a separate share action");}
+        for(NSNumber *hasLink in @[@YES,@NO]){
+            NSMutableDictionary *row=[@{@"id":@"456",@"title":@"待人工核验商品",@"status":@"unknown",@"reasons":@[@"零件缺失待确认"]} mutableCopy];
+            if(hasLink.boolValue)row[@"detailPath"]=@"https://m.zhuanzhuan.com/u/streamline_detail/new-goods-detail";
+            UITableViewController *records=(UITableViewController *)ZZInspectionResults(@[row]);
+            self.window.rootViewController=[[UINavigationController alloc]initWithRootViewController:records];
+            [records loadViewIfNeeded];
+            [UIView setAnimationsEnabled:NO];
+            [records.tableView.delegate tableView:records.tableView didSelectRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0]];
+            UIAlertController *reasonAlert=(UIAlertController *)records.presentedViewController;
+            BOOL canOpen=NO;
+            for(UIAlertAction *action in reasonAlert.actions)if([action.title isEqualToString:@"查看详情"])canOpen=YES;
+            CHECK(canOpen==hasLink.boolValue&&[reasonAlert.message containsString:@"零件缺失待确认"],@"inspection alert must preserve reasons and offer details only for linked records");
+            [records dismissViewControllerAnimated:NO completion:nil];
+            [UIView setAnimationsEnabled:YES];
+        }
         ZZHideTaskPanel();[picker setValue:migrated.config forKey:@"config"];[defaults setBool:YES forKey:@"com.codex.zzpicker.helpSeen"];UITableViewController *renderSettings=[(UITableViewController *)[NSClassFromString(@"ZZSettingsController")alloc]initWithStyle:UITableViewStyleInsetGrouped];
         UINavigationController *settingsNav=[[UINavigationController alloc]initWithRootViewController:renderSettings];UINavigationBarAppearance *hostAppearance=[UINavigationBarAppearance new];[hostAppearance configureWithTransparentBackground];settingsNav.navigationBar.standardAppearance=hostAppearance;settingsNav.navigationBar.scrollEdgeAppearance=hostAppearance;settingsNav.navigationBar.translucent=YES;
         self.window.rootViewController=settingsNav;[self.window layoutIfNeeded];[renderSettings.tableView layoutIfNeeded];[self saveScreenshot:@"ui-settings-top.png"];

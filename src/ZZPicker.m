@@ -189,7 +189,7 @@ static NSString *ZZSource(const unsigned char *bytes,NSUInteger length){return [
     if(![ident isKindOfClass:NSString.class]||![path isKindOfClass:NSString.class]||!self.borrowedConfiguration||ZZViewerVisible())return NO;
     NSString *url=[NSString stringWithFormat:@"%@?infoId=%@",path,ident];
     if(![[self.js[@"ZZCore"]invokeMethod:@"safeProductURL" withArguments:@[url,ident]]toBool])return NO;
-    [self pause:@"查看命中记录，任务已暂停"];
+    [self pause:@"查看商品记录，任务已暂停"];
     ZZShowRecordedProduct(@{@"id":ident,@"jumpUrl":url});
     return YES;
 }
